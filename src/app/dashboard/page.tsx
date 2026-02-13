@@ -5,21 +5,36 @@ import { motion, AnimatePresence } from "framer-motion";
 import StatsBar from "@/components/StatsBar";
 import ClientCard from "@/components/ClientCard";
 import HolisticCharts from "@/components/HolisticCharts";
-import AutoScroller from "@/components/AutoScroller";
+import SpotlightCard from "@/components/SpotlightCard";
 import QinaryLogo from "@/components/QinaryLogo";
 import type { ProcessedBrand } from "@/lib/metricool";
 
 const CARDS_PER_PAGE = 8;
+const SPOTLIGHT_DWELL = 6000; // 6s per spotlight card
+const GRID_DWELL = 8000; // 8s per grid page
+
+/**
+ * Display cycle:
+ *   top-0 → top-1 → top-2 → grid pages… → bottom-0 → bottom-1 → bottom-2 → repeat
+ */
+type CyclePhase =
+  | { type: "top"; index: number }
+  | { type: "grid"; page: number }
+  | { type: "bottom"; index: number };
 
 export default function DashboardPage() {
   const [brands, setBrands] = useState<ProcessedBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(0);
   const [autoScroll, setAutoScroll] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"clients" | "overview">("clients");
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [manualTab, setManualTab] = useState<"dashboard" | "overview">(
+    "dashboard"
+  );
+
+  // Cycle state
+  const [phase, setPhase] = useState<CyclePhase>({ type: "top", index: 0 });
 
   // Fetch brands
   const fetchBrands = useCallback(async () => {
@@ -40,10 +55,65 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchBrands();
-    // Refresh every 15 minutes
     const interval = setInterval(fetchBrands, 15 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchBrands]);
+
+  // Ranking: top performers = most platforms + oldest; bottom = fewest/newest
+  const { topPerformers, bottomPerformers } = useMemo(() => {
+    if (brands.length === 0)
+      return { topPerformers: [], bottomPerformers: [] };
+
+    const scored = brands.map((b) => ({
+      brand: b,
+      score:
+        b.platforms.length * 1000 +
+        b.daysSinceJoin +
+        (b.id % 5000) * 0.1,
+    }));
+    scored.sort((a, b) => b.score - a.score);
+
+    return {
+      topPerformers: scored.slice(0, 3).map((s) => s.brand),
+      bottomPerformers: scored
+        .slice(-3)
+        .reverse()
+        .map((s) => s.brand),
+    };
+  }, [brands]);
+
+  // Grid pagination
+  const totalGridPages = Math.ceil(brands.length / CARDS_PER_PAGE);
+
+  // Auto-cycle logic
+  useEffect(() => {
+    if (!autoScroll || manualTab === "overview" || brands.length === 0)
+      return;
+
+    const dwell = phase.type === "grid" ? GRID_DWELL : SPOTLIGHT_DWELL;
+
+    const timer = setTimeout(() => {
+      setPhase((prev) => {
+        if (prev.type === "top") {
+          if (prev.index < 2) return { type: "top", index: prev.index + 1 };
+          return { type: "grid", page: 0 };
+        }
+        if (prev.type === "grid") {
+          if (prev.page < totalGridPages - 1)
+            return { type: "grid", page: prev.page + 1 };
+          return { type: "bottom", index: 0 };
+        }
+        if (prev.type === "bottom") {
+          if (prev.index < 2)
+            return { type: "bottom", index: prev.index + 1 };
+          return { type: "top", index: 0 };
+        }
+        return { type: "top", index: 0 };
+      });
+    }, dwell);
+
+    return () => clearTimeout(timer);
+  }, [autoScroll, phase, totalGridPages, brands.length, manualTab]);
 
   // Computed stats
   const stats = useMemo(() => {
@@ -51,20 +121,20 @@ export default function DashboardPage() {
       (sum, b) => sum + b.platforms.length,
       0
     );
-    const activeThisWeek = brands.filter((b) => b.platforms.length > 0).length;
+    const activeThisWeek = brands.filter(
+      (b) => b.platforms.length > 0
+    ).length;
     return { totalPlatforms, activeThisWeek };
   }, [brands]);
 
-  // Pagination
-  const totalPages = Math.ceil(brands.length / CARDS_PER_PAGE);
-  const visibleBrands = brands.slice(
-    currentPage * CARDS_PER_PAGE,
-    (currentPage + 1) * CARDS_PER_PAGE
-  );
-
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
+  // Visible brands for grid phase
+  const visibleBrands =
+    phase.type === "grid"
+      ? brands.slice(
+          phase.page * CARDS_PER_PAGE,
+          (phase.page + 1) * CARDS_PER_PAGE
+        )
+      : [];
 
   // Fullscreen toggle
   const toggleFullscreen = useCallback(() => {
@@ -91,14 +161,55 @@ export default function DashboardPage() {
         e.preventDefault();
         setAutoScroll((prev) => !prev);
       }
-      if (e.key === "ArrowRight")
-        setCurrentPage((p) => (p + 1) % totalPages);
-      if (e.key === "ArrowLeft")
-        setCurrentPage((p) => (p - 1 + totalPages) % totalPages);
+      if (e.key === "ArrowRight") {
+        setPhase((prev) => {
+          if (prev.type === "top" && prev.index < 2)
+            return { type: "top", index: prev.index + 1 };
+          if (prev.type === "top") return { type: "grid", page: 0 };
+          if (prev.type === "grid" && prev.page < totalGridPages - 1)
+            return { type: "grid", page: prev.page + 1 };
+          if (prev.type === "grid") return { type: "bottom", index: 0 };
+          if (prev.type === "bottom" && prev.index < 2)
+            return { type: "bottom", index: prev.index + 1 };
+          return { type: "top", index: 0 };
+        });
+      }
+      if (e.key === "ArrowLeft") {
+        setPhase((prev) => {
+          if (prev.type === "bottom" && prev.index > 0)
+            return { type: "bottom", index: prev.index - 1 };
+          if (prev.type === "bottom")
+            return { type: "grid", page: totalGridPages - 1 };
+          if (prev.type === "grid" && prev.page > 0)
+            return { type: "grid", page: prev.page - 1 };
+          if (prev.type === "grid") return { type: "top", index: 2 };
+          if (prev.type === "top" && prev.index > 0)
+            return { type: "top", index: prev.index - 1 };
+          return { type: "bottom", index: 2 };
+        });
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [toggleFullscreen, totalPages]);
+  }, [toggleFullscreen, totalGridPages]);
+
+  // Section label
+  const sectionLabel = (() => {
+    if (manualTab === "overview") return "Overview";
+    if (phase.type === "top") return `Top Performer #${phase.index + 1}`;
+    if (phase.type === "bottom")
+      return `Needs Support #${phase.index + 1}`;
+    return `Clients — Page ${phase.page + 1} of ${totalGridPages}`;
+  })();
+
+  // Cycle progress
+  const totalSteps = 3 + totalGridPages + 3;
+  const currentStep = (() => {
+    if (phase.type === "top") return phase.index;
+    if (phase.type === "grid") return 3 + phase.page;
+    if (phase.type === "bottom") return 3 + totalGridPages + phase.index;
+    return 0;
+  })();
 
   if (loading) {
     return (
@@ -128,8 +239,7 @@ export default function DashboardPage() {
           <p className="text-red-400/60 text-sm mb-4">{error}</p>
           <button
             onClick={fetchBrands}
-            className="px-4 py-2 rounded-lg bg-white/5 text-white/50 text-xs
-                       hover:bg-white/10 transition-colors"
+            className="px-4 py-2 rounded-lg bg-white/5 text-white/50 text-xs hover:bg-white/10 transition-colors"
           >
             Retry
           </button>
@@ -139,32 +249,33 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Header */}
+    <div className="min-h-screen bg-black flex flex-col">
+      {/* ─── Header ─── */}
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/[0.03]"
       >
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-5">
             <QinaryLogo size="sm" />
-            {/* Tab switcher */}
+
+            {/* Tabs */}
             <div className="flex items-center gap-1 bg-white/[0.03] rounded-lg p-0.5">
               <button
-                onClick={() => setActiveTab("clients")}
+                onClick={() => setManualTab("dashboard")}
                 className={`px-3 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
-                  activeTab === "clients"
+                  manualTab === "dashboard"
                     ? "bg-white/[0.08] text-white/80"
                     : "text-white/25 hover:text-white/40"
                 }`}
               >
-                Clients
+                Dashboard
               </button>
               <button
-                onClick={() => setActiveTab("overview")}
+                onClick={() => setManualTab("overview")}
                 className={`px-3 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
-                  activeTab === "overview"
+                  manualTab === "overview"
                     ? "bg-white/[0.08] text-white/80"
                     : "text-white/25 hover:text-white/40"
                 }`}
@@ -172,18 +283,43 @@ export default function DashboardPage() {
                 Overview
               </button>
             </div>
+
+            {/* Section label */}
+            {manualTab !== "overview" && (
+              <span className="text-[10px] text-white/20 hidden md:block">
+                {sectionLabel}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Last updated */}
-            <span className="text-[10px] text-white/15">
+            {/* Live / Paused */}
+            <button
+              onClick={() => setAutoScroll(!autoScroll)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium
+                          uppercase tracking-wider transition-all duration-300 ${
+                            autoScroll
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-white/[0.03] text-white/30 border border-white/[0.06] hover:text-white/50"
+                          }`}
+            >
+              {autoScroll && (
+                <span
+                  className="live-dot"
+                  style={{ width: 4, height: 4 }}
+                />
+              )}
+              {autoScroll ? "Live" : "Paused"}
+            </button>
+
+            <span className="text-[10px] text-white/15 hidden sm:block">
               {lastUpdate.toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
             </span>
 
-            {/* Fullscreen button */}
+            {/* Fullscreen */}
             <button
               onClick={toggleFullscreen}
               className="p-1.5 rounded-lg hover:bg-white/[0.04] transition-colors group"
@@ -197,117 +333,153 @@ export default function DashboardPage() {
                 strokeWidth="1.5"
               >
                 {isFullscreen ? (
-                  <>
-                    <path d="M4 14h2v2M14 4h2v2M4 6h2V4M14 16h2v-2" />
-                  </>
+                  <path d="M4 14h2v2M14 4h2v2M4 6h2V4M14 16h2v-2" />
                 ) : (
-                  <>
-                    <path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" />
-                  </>
+                  <path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" />
                 )}
               </svg>
             </button>
 
-            {/* Logout */}
             <button
               onClick={async () => {
                 await fetch("/api/auth", { method: "DELETE" });
                 window.location.href = "/login";
               }}
-              className="text-[10px] text-white/15 hover:text-white/30 transition-colors uppercase tracking-wider"
+              className="text-[10px] text-white/15 hover:text-white/30 transition-colors uppercase tracking-wider hidden sm:block"
             >
               Sign out
             </button>
           </div>
         </div>
+
+        {/* Progress bar */}
+        {manualTab !== "overview" && autoScroll && (
+          <div className="h-[2px] bg-white/[0.02] relative overflow-hidden">
+            <motion.div
+              className="absolute left-0 top-0 h-full"
+              style={{
+                background:
+                  phase.type === "top"
+                    ? "linear-gradient(90deg, #00ff88, #00cc66)"
+                    : phase.type === "bottom"
+                    ? "linear-gradient(90deg, #ff4444, #cc3333)"
+                    : "linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0.15))",
+              }}
+              initial={false}
+              animate={{
+                width: `${((currentStep + 1) / totalSteps) * 100}%`,
+              }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+            />
+          </div>
+        )}
       </motion.header>
 
-      {/* Stats bar */}
+      {/* ─── Stats bar ─── */}
       <StatsBar
         totalClients={brands.length}
         totalPlatforms={stats.totalPlatforms}
         activeThisWeek={stats.activeThisWeek}
       />
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      {/* ─── Main content ─── */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-6 w-full">
         <AnimatePresence mode="wait">
-          {activeTab === "clients" ? (
-            <motion.div
-              key="clients"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* Controls */}
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                    Client Brands
-                  </h2>
-                  <p className="text-[10px] text-white/15 mt-0.5">
-                    {brands.length} active &middot; Page{" "}
-                    {currentPage + 1} of {totalPages}
-                  </p>
-                </div>
-                <AutoScroller
-                  enabled={autoScroll}
-                  onToggle={() => setAutoScroll(!autoScroll)}
-                  totalItems={brands.length}
-                  visibleCount={CARDS_PER_PAGE}
-                  currentPage={currentPage}
-                  onPageChange={handlePageChange}
-                />
-              </div>
-
-              {/* Client grid */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentPage}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-                >
-                  {visibleBrands.map((brand, i) => (
-                    <ClientCard key={brand.id} brand={brand} index={i} />
-                  ))}
-                </motion.div>
-              </AnimatePresence>
-            </motion.div>
-          ) : (
+          {manualTab === "overview" ? (
+            /* ─── Overview tab ─── */
             <motion.div
               key="overview"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
             >
-              <div className="mb-5">
-                <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                  Overview
-                </h2>
-                <p className="text-[10px] text-white/15 mt-0.5">
-                  Aggregate performance across all clients
-                </p>
-              </div>
               <HolisticCharts brands={brands} />
+            </motion.div>
+          ) : phase.type === "top" ? (
+            /* ─── Top Performer spotlight ─── */
+            <motion.div
+              key={`top-${phase.index}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {topPerformers[phase.index] && (
+                <SpotlightCard
+                  brand={topPerformers[phase.index]}
+                  rank={phase.index}
+                  mode="celebrate"
+                />
+              )}
+            </motion.div>
+          ) : phase.type === "bottom" ? (
+            /* ─── Needs Support spotlight ─── */
+            <motion.div
+              key={`bottom-${phase.index}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {bottomPerformers[phase.index] && (
+                <SpotlightCard
+                  brand={bottomPerformers[phase.index]}
+                  rank={phase.index}
+                  mode="support"
+                />
+              )}
+            </motion.div>
+          ) : (
+            /* ─── Client grid ─── */
+            <motion.div
+              key={`grid-${phase.page}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                    All Clients
+                  </h2>
+                  <p className="text-[10px] text-white/15 mt-0.5">
+                    {brands.length} brands &middot; Page{" "}
+                    {phase.page + 1} of {totalGridPages}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalGridPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() =>
+                        setPhase({ type: "grid", page: i })
+                      }
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        i === phase.page
+                          ? "bg-white/50 w-4"
+                          : "bg-white/10 w-1.5 hover:bg-white/20"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {visibleBrands.map((brand, i) => (
+                  <ClientCard key={brand.id} brand={brand} index={i} />
+                ))}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* Watermark footer */}
-      <motion.footer
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-        className="fixed bottom-3 right-4 z-30"
-      >
-        <QinaryLogo size="sm" showText={false} className="opacity-20" />
-      </motion.footer>
+      {/* ─── Watermark ─── */}
+      <div className="fixed bottom-3 right-4 z-30 opacity-15">
+        <QinaryLogo size="sm" />
+      </div>
     </div>
   );
 }
