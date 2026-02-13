@@ -17,9 +17,9 @@ import type { ProcessedBrand, Platform } from "@/lib/metricool";
 import type { BrandStatus } from "@/lib/types";
 
 const CARDS_PER_PAGE = 16;
-const SPOTLIGHT_DWELL = 6000; // 6s per spotlight card
-const GRID_DWELL = 8000; // 8s per grid page
-const CONTENT_DWELL = 8000; // 8s per content screen
+const SPOTLIGHT_DWELL = 11000; // 11s per spotlight card
+const GRID_DWELL = 13000; // 13s per grid page
+const CONTENT_DWELL = 13000; // 13s per content screen
 
 /**
  * Display cycle:
