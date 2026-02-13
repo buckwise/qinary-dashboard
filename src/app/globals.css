@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #000000;
+  --bg-card: #0a0a0a;
+  --bg-card-hover: #111111;
+  --border-subtle: #1a1a1a;
+  --border-accent: #222222;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-muted: #555555;
+  --accent-green: #00ff88;
+  --accent-yellow: #ffbb00;
+  --accent-red: #ff4444;
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333;
+}
+
+/* Number animations */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(30px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.card-stagger {
+  opacity: 0;
+  animation: slide-up 0.5s ease-out forwards;
+}
+
+/* Glow effects */
+.glow-green {
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.08), inset 0 1px 0 rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+}
+
+.glow-yellow {
+  box-shadow: 0 0 20px rgba(255, 187, 0, 0.08), inset 0 1px 0 rgba(255, 187, 0, 0.1);
+  border-color: rgba(255, 187, 0, 0.3);
+}
+
+.glow-red {
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.08), inset 0 1px 0 rgba(255, 68, 68, 0.1);
+  border-color: rgba(255, 68, 68, 0.3);
+}
+
+/* Live dot pulse */
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Sparkline container */
+.sparkline-container {
+  filter: drop-shadow(0 0 3px rgba(0, 255, 136, 0.3));
+}
+
+/* Platform icon styling */
+.platform-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.platform-icon.connected {
+  opacity: 1;
+}
+
+/* Card transition for auto-scroll */
+.card-enter {
+  opacity: 0;
+  transform: scale(0.96) translateY(10px);
+}
+.card-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.card-exit {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+.card-exit-active {
+  opacity: 0;
+  transform: scale(0.96) translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Login page */
+.login-gradient {
+  background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.05) 0%, transparent 60%);
+}

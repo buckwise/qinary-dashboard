@@ -1,0 +1,174 @@
+"use client";
+
+import { motion } from "framer-motion";
+import Image from "next/image";
+import PlatformIcons from "./PlatformIcons";
+import Sparkline, { generateTrendData } from "./Sparkline";
+import type { ProcessedBrand, Platform } from "@/lib/metricool";
+
+interface ClientCardProps {
+  brand: ProcessedBrand;
+  index: number;
+}
+
+function getStatusColor(platforms: Platform[]): {
+  border: string;
+  glow: string;
+  label: string;
+  status: "growing" | "stable" | "new";
+} {
+  if (platforms.length >= 3) {
+    return {
+      border: "border-emerald-500/20",
+      glow: "glow-green",
+      label: "Active",
+      status: "growing",
+    };
+  }
+  if (platforms.length >= 1) {
+    return {
+      border: "border-amber-500/20",
+      glow: "glow-yellow",
+      label: "Growing",
+      status: "stable",
+    };
+  }
+  return {
+    border: "border-red-500/20",
+    glow: "glow-red",
+    label: "Setup",
+    status: "new",
+  };
+}
+
+function getSparklineColor(status: "growing" | "stable" | "new"): string {
+  switch (status) {
+    case "growing":
+      return "#00ff88";
+    case "stable":
+      return "#ffbb00";
+    case "new":
+      return "#ff4444";
+  }
+}
+
+export default function ClientCard({ brand, index }: ClientCardProps) {
+  const { border, glow, label, status } = getStatusColor(brand.platforms);
+  const sparkData = generateTrendData(brand.id, 14);
+  const sparkColor = getSparklineColor(status);
+
+  // Simulated follower growth based on days since join
+  const estFollowers = Math.floor(
+    brand.platforms.length * 1200 +
+      brand.id % 5000 +
+      brand.daysSinceJoin * 3.5
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        duration: 0.45,
+        delay: index * 0.04,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      whileHover={{ scale: 1.01, y: -2 }}
+      className={`relative rounded-xl border ${border} bg-[#0a0a0a] p-4
+                  hover:bg-[#0f0f0f] transition-all duration-300 ${glow}
+                  overflow-hidden group cursor-default`}
+    >
+      {/* Subtle gradient overlay on hover */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
+
+      <div className="relative z-10">
+        {/* Top row: avatar, name, status */}
+        <div className="flex items-start gap-3 mb-3">
+          {/* Profile pic */}
+          <div className="relative shrink-0">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-white/5 ring-1 ring-white/[0.06]">
+              {brand.picture && brand.picture !== "/default-avatar.svg" ? (
+                <Image
+                  src={brand.picture}
+                  alt={brand.name}
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white/20 text-sm font-semibold">
+                  {brand.name.charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            {/* Online indicator */}
+            {brand.platforms.length > 0 && (
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#0a0a0a] flex items-center justify-center">
+                <div className="live-dot" style={{ width: 5, height: 5 }} />
+              </div>
+            )}
+          </div>
+
+          {/* Name + platforms */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-white/90 truncate leading-tight">
+              {brand.name}
+            </h3>
+            <div className="mt-1.5">
+              <PlatformIcons connected={brand.platforms} showAll />
+            </div>
+          </div>
+
+          {/* Status badge */}
+          <div
+            className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider ${
+              status === "growing"
+                ? "bg-emerald-500/10 text-emerald-400"
+                : status === "stable"
+                ? "bg-amber-500/10 text-amber-400"
+                : "bg-red-500/10 text-red-400"
+            }`}
+          >
+            {label}
+          </div>
+        </div>
+
+        {/* Metrics row */}
+        <div className="flex items-end justify-between gap-2">
+          <div className="flex flex-col gap-1">
+            {/* Follower estimate */}
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-white/90 tabular-nums">
+                {estFollowers.toLocaleString()}
+              </span>
+              <span className="text-[9px] uppercase tracking-wider text-white/25">
+                est. reach
+              </span>
+            </div>
+
+            {/* Platforms count + days */}
+            <div className="flex items-center gap-3 text-[10px] text-white/30">
+              <span>
+                {brand.platforms.length} platform
+                {brand.platforms.length !== 1 ? "s" : ""}
+              </span>
+              <span className="text-white/10">|</span>
+              <span>{brand.daysSinceJoin}d managed</span>
+            </div>
+          </div>
+
+          {/* Sparkline */}
+          <div className="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
+            <Sparkline
+              data={sparkData}
+              color={sparkColor}
+              width={72}
+              height={28}
+            />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
