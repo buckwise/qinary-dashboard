@@ -229,9 +229,9 @@ export async function GET() {
     const scored = scorePosts(postsWithData);
     scored.sort((a, b) => b.score - a.score);
 
-    // Top 3 best, bottom 3 worst (for spotlight cycling)
-    const best = scored.slice(0, 3);
-    const worst = scored.length > 3 ? scored.slice(-3).reverse() : [];
+    // Top 6 best, bottom 6 worst (for grid display)
+    const best = scored.slice(0, 6);
+    const worst = scored.length > 6 ? scored.slice(-6).reverse() : [];
 
     console.log(
       `[content-perf] ${allPosts.length} total, ${postsWithData.length} with data → ${best.length} best / ${worst.length} worst`

@@ -73,7 +73,7 @@ export default function ContentGrid({
                 color: accentColor,
               }}
             >
-              Last 24h
+              Last 30d
             </motion.div>
           </div>
         </div>
