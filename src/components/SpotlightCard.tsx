@@ -300,8 +300,8 @@ export default function SpotlightCard({
               </span>
             </div>
 
-            <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-10 gap-3">
-              {brandPosts.slice(0, 10).map((post, i) => {
+            <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-10 gap-2">
+              {brandPosts.slice(0, 20).map((post, i) => {
                 const platformConfig = PLATFORM_CONFIG[post.platform];
                 return (
                   <motion.div
