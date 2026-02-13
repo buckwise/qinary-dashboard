@@ -178,47 +178,55 @@ export async function fetchInstagramPosts(blogId: number) {
   }
 }
 
-// Platform-specific post API paths
-const PLATFORM_POST_PATHS: Partial<Record<Platform, string>> = {
-  instagram: "/stats/instagram/posts",
-  facebook: "/stats/facebook/posts",
-  twitter: "/stats/twitter/posts",
-  tiktok: "/stats/tiktok/posts",
-  linkedin: "/stats/linkedin/posts",
-  youtube: "/stats/youtube/videos",
-  threads: "/stats/threads/posts",
-  pinterest: "/stats/pinterest/pins",
+// v2 analytics API paths (these actually work, unlike the /stats/* paths)
+const V2_POST_PATHS: Partial<Record<Platform, string[]>> = {
+  instagram: ["/v2/analytics/posts/instagram", "/v2/analytics/reels/instagram"],
+  facebook: ["/v2/analytics/posts/facebook", "/v2/analytics/reels/facebook"],
+  twitter: ["/v2/analytics/posts/twitter"],
+  tiktok: ["/v2/analytics/posts/tiktok"],
+  linkedin: ["/v2/analytics/posts/linkedin"],
+  threads: ["/v2/analytics/posts/threads"],
+  pinterest: ["/v2/analytics/posts/pinterest"],
+  bluesky: ["/v2/analytics/posts/bluesky"],
 };
+
+/** Format as yyyy-MM-dd'T'HH:mm:ss (no millis, no Z) — required by v2 API */
+function formatV2Date(date: Date): string {
+  return date.toISOString().replace(/\.\d{3}Z$/, "");
+}
 
 export async function fetchPlatformPosts(
   blogId: number,
-  platform: Platform,
-  initDate?: string,
-  endDate?: string
+  platform: Platform
 ): Promise<Record<string, unknown>[]> {
-  const path = PLATFORM_POST_PATHS[platform];
-  if (!path) return [];
+  const paths = V2_POST_PATHS[platform];
+  if (!paths) return [];
 
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  try {
-    const data = await metricoolFetch<unknown>(path, {
-      blogId: blogId.toString(),
-      userId: USER_ID,
-      initDate: initDate || formatDate(thirtyDaysAgo),
-      endDate: endDate || formatDate(now),
-    });
+  const allPosts: Record<string, unknown>[] = [];
 
-    const posts = Array.isArray(data) ? data : [];
-    if (posts.length > 0) {
-      console.log(
-        `[content] ${platform} brand=${blogId}: ${posts.length} posts, keys:`,
-        Object.keys(posts[0] as object)
-      );
+  for (const path of paths) {
+    try {
+      const data = await metricoolFetch<{ data?: unknown[] }>(path, {
+        blogId: blogId.toString(),
+        userId: USER_ID,
+        from: formatV2Date(thirtyDaysAgo),
+        to: formatV2Date(now),
+      });
+
+      const posts = Array.isArray(data?.data) ? data.data : [];
+      if (posts.length > 0) {
+        console.log(
+          `[content] ${path} brand=${blogId}: ${posts.length} posts`
+        );
+      }
+      allPosts.push(...(posts as Record<string, unknown>[]));
+    } catch {
+      // Silently continue — some platforms may not have data
     }
-    return posts as Record<string, unknown>[];
-  } catch {
-    return [];
   }
+
+  return allPosts;
 }

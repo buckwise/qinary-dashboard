@@ -16,6 +16,26 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+/**
+ * Extract a date string from the v2 API response.
+ * v2 returns publishedAt/created as { dateTime, timezone } objects.
+ */
+function extractDate(raw: Record<string, unknown>): string {
+  for (const key of [
+    "publishedAt",
+    "created",
+    "createTime",
+    "publicationDate",
+  ]) {
+    const val = raw[key];
+    if (typeof val === "string" && val.length > 0) return val;
+    if (val && typeof val === "object" && "dateTime" in (val as object)) {
+      return (val as { dateTime: string }).dateTime;
+    }
+  }
+  return "";
+}
+
 function normalizePost(
   raw: Record<string, unknown>,
   brandId: number,
@@ -23,41 +43,91 @@ function normalizePost(
   brandPicture: string,
   platform: Platform
 ): ContentPost {
-  const likes = extractNumber(raw, "likes", "likeCount", "reactions", "favoriteCount");
-  const comments = extractNumber(raw, "comments", "commentCount", "replies", "replyCount");
-  const shares = extractNumber(raw, "shares", "shareCount", "retweets", "retweetCount", "reposts");
-  const reach = extractNumber(raw, "reach", "impressions", "views", "viewCount", "plays", "playCount");
+  // v2 field names per platform:
+  // Instagram posts: likes, comments, shares, reach, impressions, url, imageUrl, content, postId
+  // Instagram reels: likes, comments, shares, reach, views, url, imageUrl, content, reelId
+  // TikTok: likeCount, commentCount, shareCount, viewCount, shareUrl, coverImageUrl, videoDescription, videoId, embedLink
+  // Facebook: reactions, comments, shares, impressions, link, picture, text, postId
+  // LinkedIn: likes, comments, shares, impressions, url, picture, description, postId
+  // Twitter: likes (via like), comments, shares (via retweets), impressions, url, text, postId
+
+  const likes = extractNumber(
+    raw,
+    "likes",
+    "likeCount",
+    "reactions",
+    "like"
+  );
+  const comments = extractNumber(raw, "comments", "commentCount");
+  const shares = extractNumber(
+    raw,
+    "shares",
+    "shareCount",
+    "retweets",
+    "reposts"
+  );
+  const reach = extractNumber(
+    raw,
+    "reach",
+    "impressions",
+    "impressionsTotal",
+    "views",
+    "viewCount"
+  );
 
   const totalInteractions = likes + comments + shares;
   const engagementRate = reach > 0 ? (totalInteractions / reach) * 100 : 0;
 
-  const caption = extractString(raw, "caption", "text", "message", "description", "title", "content");
+  const caption = extractString(
+    raw,
+    "content",
+    "text",
+    "videoDescription",
+    "description",
+    "title",
+    "caption",
+    "message"
+  );
 
   const thumbnail =
-    extractString(raw, "thumbnail", "thumbnailUrl", "imageUrl", "image", "pictureUrl", "coverImage", "coverImageUrl") ||
-    null;
+    extractString(
+      raw,
+      "imageUrl",
+      "coverImageUrl",
+      "picture",
+      "thumbnail",
+      "thumbnailUrl"
+    ) || null;
 
-  // Direct media URL (video or full-res image)
-  const mediaUrl =
-    extractString(raw, "mediaUrl", "videoUrl", "video_url", "media_url", "sourceUrl") || null;
+  const mediaUrl = null; // v2 API doesn't provide direct video URLs
 
   // Permalink to original post
   const permalink =
-    extractString(raw, "permalink", "url", "postUrl", "link", "shortLink") || null;
+    extractString(raw, "url", "shareUrl", "link", "permalink") || null;
 
-  const publishedAt = extractString(
-    raw, "publishDate", "publishedAt", "date", "timestamp", "createdAt", "created", "postedAt"
-  );
+  const publishedAt = extractDate(raw);
 
   const typeStr =
-    extractString(raw, "type", "mediaType", "postType", "contentType") || "post";
+    extractString(raw, "type", "mediaType", "postType") || "post";
 
   const postId =
-    extractString(raw, "id", "postId", "mediaId", "videoId", "shortcode") ||
-    `${brandId}-${platform}-${publishedAt || Math.random()}`;
+    extractString(
+      raw,
+      "postId",
+      "reelId",
+      "videoId",
+      "id",
+      "mediaId",
+      "shortcode"
+    ) || `${brandId}-${platform}-${publishedAt || Math.random()}`;
 
   const mediaType = detectMediaType(typeStr, platform);
-  const embedUrl = permalink ? buildEmbedUrl(permalink, platform, postId) : null;
+
+  // TikTok provides embedLink directly from the API
+  const tiktokEmbed = extractString(raw, "embedLink") || null;
+  const embedUrl =
+    tiktokEmbed ||
+    (permalink ? buildEmbedUrl(permalink, platform, postId) : null);
 
   return {
     id: postId,
@@ -130,9 +200,18 @@ export async function GET() {
       const batch = tasks.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async (task) => {
-          const rawPosts = await fetchPlatformPosts(task.brandId, task.platform);
+          const rawPosts = await fetchPlatformPosts(
+            task.brandId,
+            task.platform
+          );
           return rawPosts.map((raw) =>
-            normalizePost(raw, task.brandId, task.brandName, task.brandPicture, task.platform)
+            normalizePost(
+              raw,
+              task.brandId,
+              task.brandName,
+              task.brandPicture,
+              task.platform
+            )
           );
         })
       );
