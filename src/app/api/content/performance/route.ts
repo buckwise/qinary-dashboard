@@ -8,13 +8,14 @@ import type { Platform } from "@/lib/metricool";
 import {
   extractNumber,
   extractString,
+  buildEmbedUrl,
+  detectMediaType,
   type ContentPost,
 } from "@/lib/content-types";
 
-export const dynamic = "force-dynamic"; // always fetch fresh — client hook handles daily caching
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-// Normalize a raw Metricool post object into our ContentPost shape
 function normalizePost(
   raw: Record<string, unknown>,
   brandId: number,
@@ -22,83 +23,41 @@ function normalizePost(
   brandPicture: string,
   platform: Platform
 ): ContentPost {
-  const likes = extractNumber(
-    raw,
-    "likes",
-    "likeCount",
-    "reactions",
-    "favoriteCount"
-  );
-  const comments = extractNumber(
-    raw,
-    "comments",
-    "commentCount",
-    "replies",
-    "replyCount"
-  );
-  const shares = extractNumber(
-    raw,
-    "shares",
-    "shareCount",
-    "retweets",
-    "retweetCount",
-    "reposts"
-  );
-  const reach = extractNumber(
-    raw,
-    "reach",
-    "impressions",
-    "views",
-    "viewCount",
-    "plays"
-  );
+  const likes = extractNumber(raw, "likes", "likeCount", "reactions", "favoriteCount");
+  const comments = extractNumber(raw, "comments", "commentCount", "replies", "replyCount");
+  const shares = extractNumber(raw, "shares", "shareCount", "retweets", "retweetCount", "reposts");
+  const reach = extractNumber(raw, "reach", "impressions", "views", "viewCount", "plays", "playCount");
 
   const totalInteractions = likes + comments + shares;
-  const engagementRate =
-    reach > 0 ? (totalInteractions / reach) * 100 : 0;
+  const engagementRate = reach > 0 ? (totalInteractions / reach) * 100 : 0;
 
-  const caption = extractString(
-    raw,
-    "caption",
-    "text",
-    "message",
-    "description",
-    "title",
-    "content"
-  );
+  const caption = extractString(raw, "caption", "text", "message", "description", "title", "content");
 
-  const thumbnail = extractString(
-    raw,
-    "thumbnail",
-    "thumbnailUrl",
-    "imageUrl",
-    "mediaUrl",
-    "image",
-    "pictureUrl",
-    "coverImage"
-  ) || null;
+  const thumbnail =
+    extractString(raw, "thumbnail", "thumbnailUrl", "imageUrl", "image", "pictureUrl", "coverImage", "coverImageUrl") ||
+    null;
+
+  // Direct media URL (video or full-res image)
+  const mediaUrl =
+    extractString(raw, "mediaUrl", "videoUrl", "video_url", "media_url", "sourceUrl") || null;
+
+  // Permalink to original post
+  const permalink =
+    extractString(raw, "permalink", "url", "postUrl", "link", "shortLink") || null;
 
   const publishedAt = extractString(
-    raw,
-    "publishDate",
-    "publishedAt",
-    "date",
-    "timestamp",
-    "createdAt",
-    "created",
-    "postedAt"
+    raw, "publishDate", "publishedAt", "date", "timestamp", "createdAt", "created", "postedAt"
   );
 
-  const type = extractString(
-    raw,
-    "type",
-    "mediaType",
-    "postType",
-    "contentType"
-  ) || "post";
+  const typeStr =
+    extractString(raw, "type", "mediaType", "postType", "contentType") || "post";
 
-  const postId = extractString(raw, "id", "postId", "mediaId") ||
+  const postId =
+    extractString(raw, "id", "postId", "mediaId", "videoId", "shortcode") ||
     `${brandId}-${platform}-${publishedAt || Math.random()}`;
+
+  const mediaType = detectMediaType(typeStr, platform);
+  const embedUrl = permalink ? buildEmbedUrl(permalink, platform, postId) : null;
 
   return {
     id: postId,
@@ -106,26 +65,27 @@ function normalizePost(
     brandName,
     brandPicture,
     platform,
-    type,
+    type: typeStr,
     caption,
     thumbnail,
+    mediaUrl,
+    permalink,
+    embedUrl,
+    mediaType,
     likes,
     comments,
     shares,
     reach,
     engagementRate,
-    score: 0, // computed after normalization
+    score: 0,
     publishedAt,
   };
 }
 
-// Compute combined score: 60% engagement rate + 40% reach (both normalized 0-100)
 function scorePosts(posts: ContentPost[]): ContentPost[] {
   if (posts.length === 0) return [];
-
   const maxEngagement = Math.max(...posts.map((p) => p.engagementRate), 1);
   const maxReach = Math.max(...posts.map((p) => p.reach), 1);
-
   return posts.map((post) => ({
     ...post,
     score:
@@ -141,7 +101,6 @@ export async function GET() {
       .filter((b) => !b.deleted && !b.isDemo)
       .map(processBrand);
 
-    // Build fetch tasks: one per (brand, platform) pair
     const tasks: {
       brandId: number;
       brandName: string;
@@ -164,7 +123,6 @@ export async function GET() {
       `[content-perf] Fetching posts for ${brands.length} brands, ${tasks.length} platform connections`
     );
 
-    // Fetch in parallel with concurrency batching (10 at a time)
     const BATCH_SIZE = 10;
     const allPosts: ContentPost[] = [];
 
@@ -172,22 +130,12 @@ export async function GET() {
       const batch = tasks.slice(i, i + BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async (task) => {
-          const rawPosts = await fetchPlatformPosts(
-            task.brandId,
-            task.platform
-          );
+          const rawPosts = await fetchPlatformPosts(task.brandId, task.platform);
           return rawPosts.map((raw) =>
-            normalizePost(
-              raw,
-              task.brandId,
-              task.brandName,
-              task.brandPicture,
-              task.platform
-            )
+            normalizePost(raw, task.brandId, task.brandName, task.brandPicture, task.platform)
           );
         })
       );
-
       for (const result of results) {
         if (result.status === "fulfilled") {
           allPosts.push(...result.value);
@@ -195,22 +143,19 @@ export async function GET() {
       }
     }
 
-    // Filter out posts with zero interactions (likely no data)
     const postsWithData = allPosts.filter(
       (p) => p.likes + p.comments + p.shares + p.reach > 0
     );
 
-    // Score and rank
     const scored = scorePosts(postsWithData);
     scored.sort((a, b) => b.score - a.score);
 
-    const best = scored.slice(0, 6);
-    const worst = scored.length > 6
-      ? scored.slice(-6).reverse()
-      : [];
+    // Top 3 best, bottom 3 worst (for spotlight cycling)
+    const best = scored.slice(0, 3);
+    const worst = scored.length > 3 ? scored.slice(-3).reverse() : [];
 
     console.log(
-      `[content-perf] ${allPosts.length} total posts, ${postsWithData.length} with data, returning ${best.length} best / ${worst.length} worst`
+      `[content-perf] ${allPosts.length} total, ${postsWithData.length} with data → ${best.length} best / ${worst.length} worst`
     );
 
     return NextResponse.json({

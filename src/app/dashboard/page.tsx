@@ -10,7 +10,7 @@ import QinaryLogo from "@/components/QinaryLogo";
 import DetailPanel from "@/components/DetailPanel";
 import SearchFilterBar from "@/components/SearchFilterBar";
 import EmptyFilterState from "@/components/EmptyFilterState";
-import ContentGrid from "@/components/ContentGrid";
+import ContentSpotlight from "@/components/ContentSpotlight";
 import { useFilteredBrands } from "@/hooks/useFilteredBrands";
 import { useContentPerformance } from "@/hooks/useContentPerformance";
 import type { ProcessedBrand, Platform } from "@/lib/metricool";
@@ -23,13 +23,13 @@ const CONTENT_DWELL = 8000; // 8s per content screen
 
 /**
  * Display cycle:
- *   top-0 → top-1 → top-2 → best-content → grid pages… → worst-content → bottom-0 → bottom-1 → bottom-2 → repeat
+ *   top-0 → top-1 → top-2 → best-0 → best-1 → best-2 → grid pages… → worst-0 → worst-1 → worst-2 → bottom-0 → bottom-1 → bottom-2 → repeat
  */
 type CyclePhase =
   | { type: "top"; index: number }
-  | { type: "best-content" }
+  | { type: "best-content"; index: number }
   | { type: "grid"; page: number }
-  | { type: "worst-content" }
+  | { type: "worst-content"; index: number }
   | { type: "bottom"; index: number };
 
 export default function DashboardPage() {
@@ -153,6 +153,9 @@ export default function DashboardPage() {
     )
       return;
 
+    const bestCount = Math.max(contentData.best.length, 1);
+    const worstCount = Math.max(contentData.worst.length, 1);
+
     const dwell =
       phase.type === "grid"
         ? GRID_DWELL
@@ -164,17 +167,21 @@ export default function DashboardPage() {
       setPhase((prev) => {
         if (prev.type === "top") {
           if (prev.index < 2) return { type: "top", index: prev.index + 1 };
-          return { type: "best-content" };
+          return { type: "best-content", index: 0 };
         }
         if (prev.type === "best-content") {
+          if (prev.index < bestCount - 1)
+            return { type: "best-content", index: prev.index + 1 };
           return { type: "grid", page: 0 };
         }
         if (prev.type === "grid") {
           if (prev.page < totalGridPages - 1)
             return { type: "grid", page: prev.page + 1 };
-          return { type: "worst-content" };
+          return { type: "worst-content", index: 0 };
         }
         if (prev.type === "worst-content") {
+          if (prev.index < worstCount - 1)
+            return { type: "worst-content", index: prev.index + 1 };
           return { type: "bottom", index: 0 };
         }
         if (prev.type === "bottom") {
@@ -187,7 +194,7 @@ export default function DashboardPage() {
     }, dwell);
 
     return () => clearTimeout(timer);
-  }, [effectiveAutoScroll, phase, totalGridPages, brands.length, manualTab]);
+  }, [effectiveAutoScroll, phase, totalGridPages, brands.length, manualTab, contentData]);
 
   // Computed stats
   const stats = useMemo(() => {
@@ -239,14 +246,23 @@ export default function DashboardPage() {
         setAutoScroll((prev) => !prev);
       }
       if (e.key === "ArrowRight") {
+        const bc = Math.max(contentData.best.length, 1);
+        const wc = Math.max(contentData.worst.length, 1);
         setPhase((prev) => {
           if (prev.type === "top" && prev.index < 2)
             return { type: "top", index: prev.index + 1 };
-          if (prev.type === "top") return { type: "best-content" };
-          if (prev.type === "best-content") return { type: "grid", page: 0 };
+          if (prev.type === "top")
+            return { type: "best-content", index: 0 };
+          if (prev.type === "best-content" && prev.index < bc - 1)
+            return { type: "best-content", index: prev.index + 1 };
+          if (prev.type === "best-content")
+            return { type: "grid", page: 0 };
           if (prev.type === "grid" && prev.page < totalGridPages - 1)
             return { type: "grid", page: prev.page + 1 };
-          if (prev.type === "grid") return { type: "worst-content" };
+          if (prev.type === "grid")
+            return { type: "worst-content", index: 0 };
+          if (prev.type === "worst-content" && prev.index < wc - 1)
+            return { type: "worst-content", index: prev.index + 1 };
           if (prev.type === "worst-content")
             return { type: "bottom", index: 0 };
           if (prev.type === "bottom" && prev.index < 2)
@@ -255,15 +271,23 @@ export default function DashboardPage() {
         });
       }
       if (e.key === "ArrowLeft") {
+        const bc = Math.max(contentData.best.length, 1);
+        const wc = Math.max(contentData.worst.length, 1);
         setPhase((prev) => {
           if (prev.type === "bottom" && prev.index > 0)
             return { type: "bottom", index: prev.index - 1 };
-          if (prev.type === "bottom") return { type: "worst-content" };
+          if (prev.type === "bottom")
+            return { type: "worst-content", index: wc - 1 };
+          if (prev.type === "worst-content" && prev.index > 0)
+            return { type: "worst-content", index: prev.index - 1 };
           if (prev.type === "worst-content")
             return { type: "grid", page: totalGridPages - 1 };
           if (prev.type === "grid" && prev.page > 0)
             return { type: "grid", page: prev.page - 1 };
-          if (prev.type === "grid") return { type: "best-content" };
+          if (prev.type === "grid")
+            return { type: "best-content", index: bc - 1 };
+          if (prev.type === "best-content" && prev.index > 0)
+            return { type: "best-content", index: prev.index - 1 };
           if (prev.type === "best-content")
             return { type: "top", index: 2 };
           if (prev.type === "top" && prev.index > 0)
@@ -274,28 +298,36 @@ export default function DashboardPage() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [toggleFullscreen, totalGridPages, selectedBrand, searchFocused]);
+  }, [toggleFullscreen, totalGridPages, selectedBrand, searchFocused, contentData]);
 
   // Section label
   const sectionLabel = (() => {
     if (manualTab === "overview") return "Overview";
     if (phase.type === "top") return `Top Performer #${phase.index + 1}`;
-    if (phase.type === "best-content") return "Top Content";
-    if (phase.type === "worst-content") return "Lowest Content";
+    if (phase.type === "best-content")
+      return `Top Content #${phase.index + 1}`;
+    if (phase.type === "worst-content")
+      return `Lowest Content #${phase.index + 1}`;
     if (phase.type === "bottom")
       return `Needs Support #${phase.index + 1}`;
     return `Clients — Page ${phase.page + 1} of ${totalGridPages}`;
   })();
 
-  // Cycle progress: top(3) + best-content(1) + grid(N) + worst-content(1) + bottom(3)
-  const totalSteps = 3 + 1 + totalGridPages + 1 + 3;
+  // Cycle progress: top(3) + best-content(bc) + grid(N) + worst-content(wc) + bottom(3)
+  const bestContentCount = Math.max(contentData.best.length, 1);
+  const worstContentCount = Math.max(contentData.worst.length, 1);
+  const totalSteps =
+    3 + bestContentCount + totalGridPages + worstContentCount + 3;
   const currentStep = (() => {
     if (phase.type === "top") return phase.index;
-    if (phase.type === "best-content") return 3;
-    if (phase.type === "grid") return 4 + phase.page;
-    if (phase.type === "worst-content") return 4 + totalGridPages;
+    if (phase.type === "best-content") return 3 + phase.index;
+    if (phase.type === "grid") return 3 + bestContentCount + phase.page;
+    if (phase.type === "worst-content")
+      return 3 + bestContentCount + totalGridPages + phase.index;
     if (phase.type === "bottom")
-      return 4 + totalGridPages + 1 + phase.index;
+      return (
+        3 + bestContentCount + totalGridPages + worstContentCount + phase.index
+      );
     return 0;
   })();
 
@@ -502,32 +534,34 @@ export default function DashboardPage() {
               )}
             </motion.div>
           ) : phase.type === "best-content" ? (
-            /* ─── Best performing content ─── */
+            /* ─── Best performing content (cycles 1-by-1) ─── */
             <motion.div
-              key="best-content"
+              key={`best-content-${phase.index}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <ContentGrid
-                posts={contentData.best}
+              <ContentSpotlight
+                post={contentData.best[phase.index] ?? null}
+                rank={phase.index}
                 mode="best"
                 loading={contentLoading}
                 totalPostCount={contentData.postCount}
               />
             </motion.div>
           ) : phase.type === "worst-content" ? (
-            /* ─── Lowest performing content ─── */
+            /* ─── Lowest performing content (cycles 1-by-1) ─── */
             <motion.div
-              key="worst-content"
+              key={`worst-content-${phase.index}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <ContentGrid
-                posts={contentData.worst}
+              <ContentSpotlight
+                post={contentData.worst[phase.index] ?? null}
+                rank={phase.index}
                 mode="worst"
                 loading={contentLoading}
                 totalPostCount={contentData.postCount}

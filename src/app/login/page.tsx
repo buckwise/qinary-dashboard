@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import QinaryLogo from "@/components/QinaryLogo";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -78,21 +79,8 @@ export default function LoginPage() {
           transition={{ delay: 0.2 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-3 mb-3">
-            <svg viewBox="0 0 40 40" className="w-8 h-8" fill="none">
-              <rect width="40" height="40" rx="8" fill="white" fillOpacity="0.05" />
-              <path
-                d="M12 28L20 12L28 28"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="20" cy="22" r="2" fill="white" fillOpacity="0.6" />
-            </svg>
-            <span className="text-xl font-semibold tracking-tight text-white/90">
-              Qinary
-            </span>
+          <div className="flex justify-center mb-4">
+            <QinaryLogo size="lg" />
           </div>
           <p className="text-sm text-white/30 tracking-wide uppercase">
             Client Analytics

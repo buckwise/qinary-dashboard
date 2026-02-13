@@ -200,13 +200,13 @@ export async function fetchPlatformPosts(
   if (!path) return [];
 
   const now = new Date();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   try {
     const data = await metricoolFetch<unknown>(path, {
       blogId: blogId.toString(),
       userId: USER_ID,
-      initDate: initDate || formatDate(yesterday),
+      initDate: initDate || formatDate(thirtyDaysAgo),
       endDate: endDate || formatDate(now),
     });
 
