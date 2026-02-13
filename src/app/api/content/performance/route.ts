@@ -229,9 +229,9 @@ export async function GET() {
     const scored = scorePosts(postsWithData);
     scored.sort((a, b) => b.score - a.score);
 
-    // Top 12 best, bottom 12 worst (for grid display on portrait TV)
-    const best = scored.slice(0, 12);
-    const worst = scored.length > 12 ? scored.slice(-12).reverse() : [];
+    // Top 24 best, bottom 24 worst (for grid display on portrait TV)
+    const best = scored.slice(0, 24);
+    const worst = scored.length > 24 ? scored.slice(-24).reverse() : [];
 
     // Per-brand top posts (top 20 per brand, sorted by score)
     const brandPosts: Record<string, ContentPost[]> = {};
