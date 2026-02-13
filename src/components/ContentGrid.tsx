@@ -32,7 +32,8 @@ export default function ContentGrid({
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className={`relative rounded-2xl border ${
         isBest ? "border-emerald-500/15" : "border-red-500/15"
-      } bg-[#060606] overflow-hidden ${glowClass}`}
+      } bg-[#060606] overflow-hidden ${glowClass} flex flex-col`}
+      style={{ minHeight: "calc(100vh - 180px)" }}
     >
       {/* Ambient glow */}
       <div
@@ -44,7 +45,7 @@ export default function ContentGrid({
         }}
       />
 
-      <div className="relative z-10 p-6 md:p-8">
+      <div className="relative z-10 p-6 md:p-8 flex flex-col flex-1">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">

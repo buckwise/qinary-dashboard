@@ -84,6 +84,7 @@ export interface ProcessedBrand {
   name: string;
   picture: string;
   platforms: Platform[];
+  handles: Partial<Record<Platform, string>>;
   joinDate: Date;
   daysSinceJoin: number;
 }
@@ -100,6 +101,21 @@ export function processBrand(brand: Brand): ProcessedBrand {
   if (brand.bluesky || brand.blueskyHandle) platforms.push("bluesky");
   if (brand.pinterest || brand.pinterestBusiness) platforms.push("pinterest");
 
+  const handles: Partial<Record<Platform, string>> = {};
+  if (brand.instagram) handles.instagram = brand.instagram;
+  if (brand.facebook) handles.facebook = brand.facebook;
+  if (brand.twitter) handles.twitter = brand.twitter;
+  if (brand.tiktok) handles.tiktok = brand.tiktok;
+  if (brand.linkedinCompany || brand.linkedInCompanyName)
+    handles.linkedin = brand.linkedInCompanyName || brand.linkedinCompany || "";
+  if (brand.youtubeChannelName) handles.youtube = brand.youtubeChannelName;
+  if (brand.threadsAccountName || brand.threads)
+    handles.threads = brand.threadsAccountName || brand.threads || "";
+  if (brand.blueskyHandle || brand.bluesky)
+    handles.bluesky = brand.blueskyHandle || brand.bluesky || "";
+  if (brand.pinterest || brand.pinterestBusiness)
+    handles.pinterest = brand.pinterestBusiness || brand.pinterest || "";
+
   const joinDate = new Date(brand.joinDate);
   const now = new Date();
   const daysSinceJoin = Math.floor(
@@ -111,6 +127,7 @@ export function processBrand(brand: Brand): ProcessedBrand {
     name: brand.label,
     picture: brand.picture || "/default-avatar.svg",
     platforms,
+    handles,
     joinDate,
     daysSinceJoin,
   };

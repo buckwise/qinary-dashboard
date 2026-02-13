@@ -25,6 +25,7 @@ export interface ContentPost {
 export interface ContentPerformanceData {
   best: ContentPost[];
   worst: ContentPost[];
+  brandPosts: Record<string, ContentPost[]>;
   fetchedAt: string;
   postCount: number;
 }

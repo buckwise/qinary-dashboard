@@ -498,6 +498,7 @@ export default function DashboardPage() {
                   brand={topPerformers[phase.index]}
                   rank={phase.index}
                   mode="celebrate"
+                  brandPosts={contentData.brandPosts[topPerformers[phase.index].id.toString()] || []}
                 />
               )}
             </motion.div>
@@ -547,6 +548,7 @@ export default function DashboardPage() {
                   brand={bottomPerformers[phase.index]}
                   rank={phase.index}
                   mode="support"
+                  brandPosts={contentData.brandPosts[bottomPerformers[phase.index].id.toString()] || []}
                 />
               )}
             </motion.div>

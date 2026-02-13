@@ -6,6 +6,7 @@ import type { ContentPerformanceData } from "@/lib/content-types";
 const EMPTY: ContentPerformanceData = {
   best: [],
   worst: [],
+  brandPosts: {},
   fetchedAt: "",
   postCount: 0,
 };

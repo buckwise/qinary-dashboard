@@ -233,13 +233,22 @@ export async function GET() {
     const best = scored.slice(0, 12);
     const worst = scored.length > 12 ? scored.slice(-12).reverse() : [];
 
+    // Per-brand top posts (top 6 per brand, sorted by score)
+    const brandPosts: Record<string, ContentPost[]> = {};
+    for (const post of scored) {
+      const key = post.brandId.toString();
+      if (!brandPosts[key]) brandPosts[key] = [];
+      if (brandPosts[key].length < 6) brandPosts[key].push(post);
+    }
+
     console.log(
-      `[content-perf] ${allPosts.length} total, ${postsWithData.length} with data → ${best.length} best / ${worst.length} worst`
+      `[content-perf] ${allPosts.length} total, ${postsWithData.length} with data → ${best.length} best / ${worst.length} worst, ${Object.keys(brandPosts).length} brands`
     );
 
     return NextResponse.json({
       best,
       worst,
+      brandPosts,
       fetchedAt: new Date().toISOString(),
       postCount: postsWithData.length,
     });
@@ -248,6 +257,7 @@ export async function GET() {
     return NextResponse.json({
       best: [],
       worst: [],
+      brandPosts: {},
       fetchedAt: new Date().toISOString(),
       postCount: 0,
     });
