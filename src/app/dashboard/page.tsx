@@ -7,19 +7,29 @@ import ClientCard from "@/components/ClientCard";
 import HolisticCharts from "@/components/HolisticCharts";
 import SpotlightCard from "@/components/SpotlightCard";
 import QinaryLogo from "@/components/QinaryLogo";
-import type { ProcessedBrand } from "@/lib/metricool";
+import DetailPanel from "@/components/DetailPanel";
+import SearchFilterBar from "@/components/SearchFilterBar";
+import EmptyFilterState from "@/components/EmptyFilterState";
+import ContentGrid from "@/components/ContentGrid";
+import { useFilteredBrands } from "@/hooks/useFilteredBrands";
+import { useContentPerformance } from "@/hooks/useContentPerformance";
+import type { ProcessedBrand, Platform } from "@/lib/metricool";
+import type { BrandStatus } from "@/lib/types";
 
 const CARDS_PER_PAGE = 8;
 const SPOTLIGHT_DWELL = 6000; // 6s per spotlight card
 const GRID_DWELL = 8000; // 8s per grid page
+const CONTENT_DWELL = 8000; // 8s per content screen
 
 /**
  * Display cycle:
- *   top-0 → top-1 → top-2 → grid pages… → bottom-0 → bottom-1 → bottom-2 → repeat
+ *   top-0 → top-1 → top-2 → best-content → grid pages… → worst-content → bottom-0 → bottom-1 → bottom-2 → repeat
  */
 type CyclePhase =
   | { type: "top"; index: number }
+  | { type: "best-content" }
   | { type: "grid"; page: number }
+  | { type: "worst-content" }
   | { type: "bottom"; index: number };
 
 export default function DashboardPage() {
@@ -35,6 +45,37 @@ export default function DashboardPage() {
 
   // Cycle state
   const [phase, setPhase] = useState<CyclePhase>({ type: "top", index: 0 });
+
+  // Detail panel state
+  const [selectedBrand, setSelectedBrand] = useState<ProcessedBrand | null>(
+    null
+  );
+
+  // Search & filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<BrandStatus[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+
+  // Filter hook
+  const { filtered, hasActiveFilters } = useFilteredBrands(brands, {
+    searchQuery,
+    selectedPlatforms,
+    selectedStatuses,
+  });
+
+  // Content performance data
+  const { data: contentData, loading: contentLoading } =
+    useContentPerformance();
+
+  // Display brands: filtered when filters active, full list otherwise
+  const displayBrands = hasActiveFilters ? filtered : brands;
+
+  const clearAllFilters = useCallback(() => {
+    setSearchQuery("");
+    setSelectedPlatforms([]);
+    setSelectedStatuses([]);
+  }, []);
 
   // Fetch brands
   const fetchBrands = useCallback(async () => {
@@ -60,6 +101,7 @@ export default function DashboardPage() {
   }, [fetchBrands]);
 
   // Ranking: top performers = most platforms + oldest; bottom = fewest/newest
+  // Always uses unfiltered brands
   const { topPerformers, bottomPerformers } = useMemo(() => {
     if (brands.length === 0)
       return { topPerformers: [], bottomPerformers: [] };
@@ -82,25 +124,57 @@ export default function DashboardPage() {
     };
   }, [brands]);
 
-  // Grid pagination
-  const totalGridPages = Math.ceil(brands.length / CARDS_PER_PAGE);
+  // Grid pagination based on displayBrands
+  const totalGridPages = Math.max(
+    1,
+    Math.ceil(displayBrands.length / CARDS_PER_PAGE)
+  );
+
+  // Clamp grid page when filters reduce page count
+  useEffect(() => {
+    if (phase.type === "grid" && phase.page >= totalGridPages) {
+      setPhase({ type: "grid", page: Math.max(0, totalGridPages - 1) });
+    }
+  }, [totalGridPages, phase]);
+
+  // Auto-scroll pauses when detail panel open, filters active, or search focused
+  const effectiveAutoScroll =
+    autoScroll &&
+    selectedBrand === null &&
+    !hasActiveFilters &&
+    !searchFocused;
 
   // Auto-cycle logic
   useEffect(() => {
-    if (!autoScroll || manualTab === "overview" || brands.length === 0)
+    if (
+      !effectiveAutoScroll ||
+      manualTab === "overview" ||
+      brands.length === 0
+    )
       return;
 
-    const dwell = phase.type === "grid" ? GRID_DWELL : SPOTLIGHT_DWELL;
+    const dwell =
+      phase.type === "grid"
+        ? GRID_DWELL
+        : phase.type === "best-content" || phase.type === "worst-content"
+        ? CONTENT_DWELL
+        : SPOTLIGHT_DWELL;
 
     const timer = setTimeout(() => {
       setPhase((prev) => {
         if (prev.type === "top") {
           if (prev.index < 2) return { type: "top", index: prev.index + 1 };
+          return { type: "best-content" };
+        }
+        if (prev.type === "best-content") {
           return { type: "grid", page: 0 };
         }
         if (prev.type === "grid") {
           if (prev.page < totalGridPages - 1)
             return { type: "grid", page: prev.page + 1 };
+          return { type: "worst-content" };
+        }
+        if (prev.type === "worst-content") {
           return { type: "bottom", index: 0 };
         }
         if (prev.type === "bottom") {
@@ -113,7 +187,7 @@ export default function DashboardPage() {
     }, dwell);
 
     return () => clearTimeout(timer);
-  }, [autoScroll, phase, totalGridPages, brands.length, manualTab]);
+  }, [effectiveAutoScroll, phase, totalGridPages, brands.length, manualTab]);
 
   // Computed stats
   const stats = useMemo(() => {
@@ -130,7 +204,7 @@ export default function DashboardPage() {
   // Visible brands for grid phase
   const visibleBrands =
     phase.type === "grid"
-      ? brands.slice(
+      ? displayBrands.slice(
           phase.page * CARDS_PER_PAGE,
           (phase.page + 1) * CARDS_PER_PAGE
         )
@@ -153,9 +227,12 @@ export default function DashboardPage() {
     return () => document.removeEventListener("fullscreenchange", handleFs);
   }, []);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — guarded when detail panel open or input focused
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // Skip shortcuts when detail panel is open or search input focused
+      if (selectedBrand !== null || searchFocused) return;
+
       if (e.key === "f") toggleFullscreen();
       if (e.key === " ") {
         e.preventDefault();
@@ -165,10 +242,13 @@ export default function DashboardPage() {
         setPhase((prev) => {
           if (prev.type === "top" && prev.index < 2)
             return { type: "top", index: prev.index + 1 };
-          if (prev.type === "top") return { type: "grid", page: 0 };
+          if (prev.type === "top") return { type: "best-content" };
+          if (prev.type === "best-content") return { type: "grid", page: 0 };
           if (prev.type === "grid" && prev.page < totalGridPages - 1)
             return { type: "grid", page: prev.page + 1 };
-          if (prev.type === "grid") return { type: "bottom", index: 0 };
+          if (prev.type === "grid") return { type: "worst-content" };
+          if (prev.type === "worst-content")
+            return { type: "bottom", index: 0 };
           if (prev.type === "bottom" && prev.index < 2)
             return { type: "bottom", index: prev.index + 1 };
           return { type: "top", index: 0 };
@@ -178,11 +258,14 @@ export default function DashboardPage() {
         setPhase((prev) => {
           if (prev.type === "bottom" && prev.index > 0)
             return { type: "bottom", index: prev.index - 1 };
-          if (prev.type === "bottom")
+          if (prev.type === "bottom") return { type: "worst-content" };
+          if (prev.type === "worst-content")
             return { type: "grid", page: totalGridPages - 1 };
           if (prev.type === "grid" && prev.page > 0)
             return { type: "grid", page: prev.page - 1 };
-          if (prev.type === "grid") return { type: "top", index: 2 };
+          if (prev.type === "grid") return { type: "best-content" };
+          if (prev.type === "best-content")
+            return { type: "top", index: 2 };
           if (prev.type === "top" && prev.index > 0)
             return { type: "top", index: prev.index - 1 };
           return { type: "bottom", index: 2 };
@@ -191,23 +274,28 @@ export default function DashboardPage() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [toggleFullscreen, totalGridPages]);
+  }, [toggleFullscreen, totalGridPages, selectedBrand, searchFocused]);
 
   // Section label
   const sectionLabel = (() => {
     if (manualTab === "overview") return "Overview";
     if (phase.type === "top") return `Top Performer #${phase.index + 1}`;
+    if (phase.type === "best-content") return "Top Content";
+    if (phase.type === "worst-content") return "Lowest Content";
     if (phase.type === "bottom")
       return `Needs Support #${phase.index + 1}`;
     return `Clients — Page ${phase.page + 1} of ${totalGridPages}`;
   })();
 
-  // Cycle progress
-  const totalSteps = 3 + totalGridPages + 3;
+  // Cycle progress: top(3) + best-content(1) + grid(N) + worst-content(1) + bottom(3)
+  const totalSteps = 3 + 1 + totalGridPages + 1 + 3;
   const currentStep = (() => {
     if (phase.type === "top") return phase.index;
-    if (phase.type === "grid") return 3 + phase.page;
-    if (phase.type === "bottom") return 3 + totalGridPages + phase.index;
+    if (phase.type === "best-content") return 3;
+    if (phase.type === "grid") return 4 + phase.page;
+    if (phase.type === "worst-content") return 4 + totalGridPages;
+    if (phase.type === "bottom")
+      return 4 + totalGridPages + 1 + phase.index;
     return 0;
   })();
 
@@ -298,18 +386,18 @@ export default function DashboardPage() {
               onClick={() => setAutoScroll(!autoScroll)}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium
                           uppercase tracking-wider transition-all duration-300 ${
-                            autoScroll
+                            effectiveAutoScroll
                               ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                               : "bg-white/[0.03] text-white/30 border border-white/[0.06] hover:text-white/50"
                           }`}
             >
-              {autoScroll && (
+              {effectiveAutoScroll && (
                 <span
                   className="live-dot"
                   style={{ width: 4, height: 4 }}
                 />
               )}
-              {autoScroll ? "Live" : "Paused"}
+              {effectiveAutoScroll ? "Live" : "Paused"}
             </button>
 
             <span className="text-[10px] text-white/15 hidden sm:block">
@@ -353,15 +441,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Progress bar */}
-        {manualTab !== "overview" && autoScroll && (
+        {manualTab !== "overview" && effectiveAutoScroll && (
           <div className="h-[2px] bg-white/[0.02] relative overflow-hidden">
             <motion.div
               className="absolute left-0 top-0 h-full"
               style={{
                 background:
-                  phase.type === "top"
+                  phase.type === "top" || phase.type === "best-content"
                     ? "linear-gradient(90deg, #00ff88, #00cc66)"
-                    : phase.type === "bottom"
+                    : phase.type === "bottom" || phase.type === "worst-content"
                     ? "linear-gradient(90deg, #ff4444, #cc3333)"
                     : "linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0.15))",
               }}
@@ -413,6 +501,38 @@ export default function DashboardPage() {
                 />
               )}
             </motion.div>
+          ) : phase.type === "best-content" ? (
+            /* ─── Best performing content ─── */
+            <motion.div
+              key="best-content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ContentGrid
+                posts={contentData.best}
+                mode="best"
+                loading={contentLoading}
+                totalPostCount={contentData.postCount}
+              />
+            </motion.div>
+          ) : phase.type === "worst-content" ? (
+            /* ─── Lowest performing content ─── */
+            <motion.div
+              key="worst-content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ContentGrid
+                posts={contentData.worst}
+                mode="worst"
+                loading={contentLoading}
+                totalPostCount={contentData.postCount}
+              />
+            </motion.div>
           ) : phase.type === "bottom" ? (
             /* ─── Needs Support spotlight ─── */
             <motion.div
@@ -439,13 +559,28 @@ export default function DashboardPage() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
             >
+              {/* Search & filter bar */}
+              <SearchFilterBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                selectedPlatforms={selectedPlatforms}
+                onPlatformsChange={setSelectedPlatforms}
+                selectedStatuses={selectedStatuses}
+                onStatusesChange={setSelectedStatuses}
+                totalCount={brands.length}
+                filteredCount={filtered.length}
+                hasActiveFilters={hasActiveFilters}
+                onClearAll={clearAllFilters}
+                onFocusChange={setSearchFocused}
+              />
+
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-                    All Clients
+                    {hasActiveFilters ? "Filtered Clients" : "All Clients"}
                   </h2>
                   <p className="text-[10px] text-white/15 mt-0.5">
-                    {brands.length} brands &middot; Page{" "}
+                    {displayBrands.length} brands &middot; Page{" "}
                     {phase.page + 1} of {totalGridPages}
                   </p>
                 </div>
@@ -466,15 +601,30 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {visibleBrands.map((brand, i) => (
-                  <ClientCard key={brand.id} brand={brand} index={i} />
-                ))}
-              </div>
+              {visibleBrands.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {visibleBrands.map((brand, i) => (
+                    <ClientCard
+                      key={brand.id}
+                      brand={brand}
+                      index={i}
+                      onClick={() => setSelectedBrand(brand)}
+                    />
+                  ))}
+                </div>
+              ) : hasActiveFilters ? (
+                <EmptyFilterState onClearAll={clearAllFilters} />
+              ) : null}
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+
+      {/* ─── Detail Panel (outside phase AnimatePresence) ─── */}
+      <DetailPanel
+        brand={selectedBrand}
+        onClose={() => setSelectedBrand(null)}
+      />
 
       {/* ─── Watermark ─── */}
       <div className="fixed bottom-3 right-4 z-30 opacity-15">

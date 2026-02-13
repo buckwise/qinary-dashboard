@@ -177,3 +177,48 @@ export async function fetchInstagramPosts(blogId: number) {
     return [];
   }
 }
+
+// Platform-specific post API paths
+const PLATFORM_POST_PATHS: Partial<Record<Platform, string>> = {
+  instagram: "/stats/instagram/posts",
+  facebook: "/stats/facebook/posts",
+  twitter: "/stats/twitter/posts",
+  tiktok: "/stats/tiktok/posts",
+  linkedin: "/stats/linkedin/posts",
+  youtube: "/stats/youtube/videos",
+  threads: "/stats/threads/posts",
+  pinterest: "/stats/pinterest/pins",
+};
+
+export async function fetchPlatformPosts(
+  blogId: number,
+  platform: Platform,
+  initDate?: string,
+  endDate?: string
+): Promise<Record<string, unknown>[]> {
+  const path = PLATFORM_POST_PATHS[platform];
+  if (!path) return [];
+
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  try {
+    const data = await metricoolFetch<unknown>(path, {
+      blogId: blogId.toString(),
+      userId: USER_ID,
+      initDate: initDate || formatDate(yesterday),
+      endDate: endDate || formatDate(now),
+    });
+
+    const posts = Array.isArray(data) ? data : [];
+    if (posts.length > 0) {
+      console.log(
+        `[content] ${platform} brand=${blogId}: ${posts.length} posts, keys:`,
+        Object.keys(posts[0] as object)
+      );
+    }
+    return posts as Record<string, unknown>[];
+  } catch {
+    return [];
+  }
+}

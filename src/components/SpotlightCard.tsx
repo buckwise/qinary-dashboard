@@ -5,6 +5,9 @@ import Image from "next/image";
 import PlatformIcons from "./PlatformIcons";
 import Sparkline, { generateTrendData } from "./Sparkline";
 import AnimatedNumber from "./AnimatedNumber";
+import StatBlock from "./StatBlock";
+import { useStats } from "@/hooks/useStats";
+import { getGrowthPercent } from "@/lib/estimations";
 import type { ProcessedBrand } from "@/lib/metricool";
 
 interface SpotlightCardProps {
@@ -13,43 +16,11 @@ interface SpotlightCardProps {
   mode: "celebrate" | "support";
 }
 
-function getEstFollowers(brand: ProcessedBrand): number {
-  return Math.floor(
-    brand.platforms.length * 1200 +
-      (brand.id % 5000) +
-      brand.daysSinceJoin * 3.5
-  );
-}
-
-function getEstReach(brand: ProcessedBrand): number {
-  return Math.floor(getEstFollowers(brand) * 1.8 + brand.platforms.length * 800);
-}
-
-function getEstEngagement(brand: ProcessedBrand): number {
-  const base = 2.5 + (brand.platforms.length * 0.6);
-  const variance = ((brand.id % 30) - 15) * 0.1;
-  return Math.max(0.8, Math.min(8.5, base + variance));
-}
-
-function getEstContentPieces(brand: ProcessedBrand): number {
-  return Math.floor(brand.daysSinceJoin * 0.35 * Math.max(1, brand.platforms.length * 0.6));
-}
-
-function getGrowthPercent(brand: ProcessedBrand): number {
-  if (brand.platforms.length >= 4) return 12 + (brand.id % 18);
-  if (brand.platforms.length >= 3) return 6 + (brand.id % 12);
-  if (brand.platforms.length >= 1) return 1 + (brand.id % 5);
-  return -(brand.id % 4);
-}
-
 export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps) {
   const isCelebrate = mode === "celebrate";
   const sparkData = generateTrendData(brand.id, 20);
   const growth = getGrowthPercent(brand);
-  const followers = getEstFollowers(brand);
-  const reach = getEstReach(brand);
-  const engagement = getEstEngagement(brand);
-  const contentPieces = getEstContentPieces(brand);
+  const { stats } = useStats(brand);
 
   const accentColor = isCelebrate ? "#00ff88" : "#ff4444";
   const accentColorMuted = isCelebrate ? "rgba(0,255,136,0.1)" : "rgba(255,68,68,0.1)";
@@ -185,7 +156,7 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
           </div>
         </div>
 
-        {/* Stats grid - the zoomed-in detail */}
+        {/* Stats grid */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
@@ -194,30 +165,34 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
         >
           <StatBlock
             label="Followers"
-            value={followers}
+            value={stats.followers}
             color={accentColor}
             delay={0.5}
+            isEstimated={stats.isEstimated}
           />
           <StatBlock
-            label="Est. Reach"
-            value={reach}
+            label="Reach"
+            value={stats.reach}
             color={accentColor}
             delay={0.6}
+            isEstimated={stats.isEstimated}
           />
           <StatBlock
             label="Engagement"
-            value={engagement}
+            value={stats.engagement}
             color={accentColor}
             delay={0.7}
             formatFn={(n) => n.toFixed(1) + "%"}
             rawNumber={false}
+            isEstimated={stats.isEstimated}
           />
           <StatBlock
             label="Content Published"
-            value={contentPieces}
+            value={stats.contentPublished}
             color={accentColor}
             delay={0.8}
             formatFn={(n) => n.toString()}
+            isEstimated={stats.isEstimated}
           />
         </motion.div>
 
@@ -251,59 +226,6 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
           </div>
         </motion.div>
       </div>
-    </motion.div>
-  );
-}
-
-/* Stat block sub-component */
-function StatBlock({
-  label,
-  value,
-  color,
-  delay,
-  formatFn,
-  rawNumber = true,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  delay: number;
-  formatFn?: (n: number) => string;
-  rawNumber?: boolean;
-}) {
-  const defaultFmt = (n: number) => {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
-    if (n >= 1_000) return (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "K";
-    return n.toLocaleString();
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3"
-    >
-      <p className="text-[9px] uppercase tracking-[0.15em] text-white/30 mb-1.5 font-medium">
-        {label}
-      </p>
-      {rawNumber ? (
-        <AnimatedNumber
-          value={value}
-          className="text-xl font-bold text-white/90"
-          formatFn={formatFn || defaultFmt}
-          duration={2}
-        />
-      ) : (
-        <motion.span
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: delay + 0.3 }}
-          className="text-xl font-bold text-white/90"
-        >
-          {formatFn ? formatFn(value) : value}
-        </motion.span>
-      )}
     </motion.div>
   );
 }

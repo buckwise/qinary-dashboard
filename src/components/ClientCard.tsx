@@ -4,41 +4,14 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import PlatformIcons from "./PlatformIcons";
 import Sparkline, { generateTrendData } from "./Sparkline";
-import type { ProcessedBrand, Platform } from "@/lib/metricool";
+import { getEstFollowers } from "@/lib/estimations";
+import { getBrandStatus } from "@/lib/types";
+import type { ProcessedBrand } from "@/lib/metricool";
 
 interface ClientCardProps {
   brand: ProcessedBrand;
   index: number;
-}
-
-function getStatusColor(platforms: Platform[]): {
-  border: string;
-  glow: string;
-  label: string;
-  status: "growing" | "stable" | "new";
-} {
-  if (platforms.length >= 3) {
-    return {
-      border: "border-emerald-500/20",
-      glow: "glow-green",
-      label: "Active",
-      status: "growing",
-    };
-  }
-  if (platforms.length >= 1) {
-    return {
-      border: "border-amber-500/20",
-      glow: "glow-yellow",
-      label: "Growing",
-      status: "stable",
-    };
-  }
-  return {
-    border: "border-red-500/20",
-    glow: "glow-red",
-    label: "Setup",
-    status: "new",
-  };
+  onClick?: () => void;
 }
 
 function getSparklineColor(status: "growing" | "stable" | "new"): string {
@@ -52,17 +25,11 @@ function getSparklineColor(status: "growing" | "stable" | "new"): string {
   }
 }
 
-export default function ClientCard({ brand, index }: ClientCardProps) {
-  const { border, glow, label, status } = getStatusColor(brand.platforms);
+export default function ClientCard({ brand, index, onClick }: ClientCardProps) {
+  const { border, glow, status: brandStatus, statusClass } = getBrandStatus(brand.platforms);
   const sparkData = generateTrendData(brand.id, 14);
-  const sparkColor = getSparklineColor(status);
-
-  // Simulated follower growth based on days since join
-  const estFollowers = Math.floor(
-    brand.platforms.length * 1200 +
-      brand.id % 5000 +
-      brand.daysSinceJoin * 3.5
-  );
+  const sparkColor = getSparklineColor(statusClass);
+  const estFollowers = getEstFollowers(brand);
 
   return (
     <motion.div
@@ -74,9 +41,10 @@ export default function ClientCard({ brand, index }: ClientCardProps) {
         ease: [0.16, 1, 0.3, 1],
       }}
       whileHover={{ scale: 1.01, y: -2 }}
+      onClick={onClick}
       className={`relative rounded-xl border ${border} bg-[#0a0a0a] p-4
                   hover:bg-[#0f0f0f] transition-all duration-300 ${glow}
-                  overflow-hidden group cursor-default`}
+                  overflow-hidden group cursor-pointer`}
     >
       {/* Subtle gradient overlay on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
@@ -123,14 +91,14 @@ export default function ClientCard({ brand, index }: ClientCardProps) {
           {/* Status badge */}
           <div
             className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider ${
-              status === "growing"
+              statusClass === "growing"
                 ? "bg-emerald-500/10 text-emerald-400"
-                : status === "stable"
+                : statusClass === "stable"
                 ? "bg-amber-500/10 text-amber-400"
                 : "bg-red-500/10 text-red-400"
             }`}
           >
-            {label}
+            {brandStatus}
           </div>
         </div>
 
