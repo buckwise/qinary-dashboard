@@ -5,12 +5,13 @@ export function middleware(request: NextRequest) {
   const session = request.cookies.get("qinary_session")?.value;
   const isLoginPage = request.nextUrl.pathname === "/login";
   const isApiAuth = request.nextUrl.pathname.startsWith("/api/auth");
+  const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
   const isPublicAsset =
     request.nextUrl.pathname.startsWith("/_next") ||
     request.nextUrl.pathname.startsWith("/favicon") ||
-    request.nextUrl.pathname === "/qinary-logo.svg";
+    request.nextUrl.pathname.match(/\.(png|svg|ico|jpg|jpeg|webp)$/) !== null;
 
-  if (isPublicAsset || isApiAuth) {
+  if (isPublicAsset || isApiRoute) {
     return NextResponse.next();
   }
 

@@ -237,7 +237,7 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
             <span className="text-white/10">•</span>
             <span>
               Joined{" "}
-              {brand.joinDate.toLocaleDateString("en-US", {
+              {new Date(brand.joinDate).toLocaleDateString("en-US", {
                 month: "short",
                 year: "numeric",
               })}
