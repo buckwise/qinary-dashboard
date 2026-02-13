@@ -628,6 +628,33 @@ export default function DashboardPage() {
         onClose={() => setSelectedBrand(null)}
       />
 
+      {/* ─── Floating pause/play button ─── */}
+      <button
+        onClick={() => setAutoScroll(!autoScroll)}
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2.5 px-5 py-2.5 rounded-full
+                    backdrop-blur-xl shadow-2xl transition-all duration-300 border ${
+                      effectiveAutoScroll
+                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25"
+                        : "bg-white/10 border-white/20 text-white/70 hover:bg-white/15"
+                    }`}
+      >
+        {effectiveAutoScroll ? (
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+        <span className="text-sm font-semibold uppercase tracking-wider">
+          {effectiveAutoScroll ? "Pause" : "Play"}
+        </span>
+        {effectiveAutoScroll && (
+          <span className="live-dot" style={{ width: 6, height: 6 }} />
+        )}
+      </button>
+
       {/* ─── Watermark ─── */}
       <div className="fixed bottom-3 right-4 z-30 opacity-15">
         <QinaryLogo size="sm" />
