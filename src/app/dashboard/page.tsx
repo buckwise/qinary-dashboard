@@ -16,7 +16,7 @@ import { useContentPerformance } from "@/hooks/useContentPerformance";
 import type { ProcessedBrand, Platform } from "@/lib/metricool";
 import type { BrandStatus } from "@/lib/types";
 
-const CARDS_PER_PAGE = 8;
+const CARDS_PER_PAGE = 16;
 const SPOTLIGHT_DWELL = 6000; // 6s per spotlight card
 const GRID_DWELL = 8000; // 8s per grid page
 const CONTENT_DWELL = 8000; // 8s per content screen
@@ -602,7 +602,7 @@ export default function DashboardPage() {
               </div>
 
               {visibleBrands.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {visibleBrands.map((brand, i) => (
                     <ClientCard
                       key={brand.id}

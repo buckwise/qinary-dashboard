@@ -229,9 +229,9 @@ export async function GET() {
     const scored = scorePosts(postsWithData);
     scored.sort((a, b) => b.score - a.score);
 
-    // Top 6 best, bottom 6 worst (for grid display)
-    const best = scored.slice(0, 6);
-    const worst = scored.length > 6 ? scored.slice(-6).reverse() : [];
+    // Top 12 best, bottom 12 worst (for grid display on portrait TV)
+    const best = scored.slice(0, 12);
+    const worst = scored.length > 12 ? scored.slice(-12).reverse() : [];
 
     console.log(
       `[content-perf] ${allPosts.length} total, ${postsWithData.length} with data → ${best.length} best / ${worst.length} worst`
