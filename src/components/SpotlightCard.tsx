@@ -54,14 +54,14 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
         {/* Section header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
-            <span className="text-lg">{rankLabels[rank] || rankLabels[0]}</span>
+            <span className="text-2xl">{rankLabels[rank] || rankLabels[0]}</span>
             <span
-              className="text-[10px] font-bold uppercase tracking-[0.2em]"
+              className="text-sm font-bold uppercase tracking-[0.2em]"
               style={{ color: accentColor, opacity: 0.7 }}
             >
               {isCelebrate ? "Top Performer" : "Needs Support"}
             </span>
-            <span className="text-[10px] text-white/15 ml-1">
+            <span className="text-xs text-white/15 ml-1">
               #{rank + 1}
             </span>
           </div>
@@ -91,7 +91,7 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
             className="shrink-0"
           >
             <div
-              className={`w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden ring-2 ${
+              className={`w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden ring-2 ${
                 isCelebrate ? "ring-emerald-500/40" : "ring-red-500/40"
               }`}
               style={{
@@ -102,8 +102,8 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
                 <Image
                   src={brand.picture}
                   alt={brand.name}
-                  width={112}
-                  height={112}
+                  width={144}
+                  height={144}
                   className="w-full h-full object-cover"
                   unoptimized
                 />
@@ -124,7 +124,7 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-2xl md:text-3xl font-bold text-white/95 truncate leading-tight mb-2"
+              className="text-3xl md:text-4xl font-bold text-white/95 truncate leading-tight mb-3"
             >
               {brand.name}
             </motion.h2>
@@ -148,9 +148,9 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
               <Sparkline
                 data={sparkData}
                 color={accentColor}
-                width={200}
-                height={40}
-                strokeWidth={2}
+                width={260}
+                height={48}
+                strokeWidth={2.5}
               />
             </motion.div>
           </div>
@@ -201,9 +201,9 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.9 }}
-          className="flex items-center justify-between mt-5 pt-4 border-t border-white/[0.04]"
+          className="flex items-center justify-between mt-6 pt-4 border-t border-white/[0.04]"
         >
-          <div className="flex items-center gap-4 text-[11px] text-white/25">
+          <div className="flex items-center gap-4 text-xs text-white/25">
             <span>
               {brand.platforms.length} platform{brand.platforms.length !== 1 ? "s" : ""} connected
             </span>
@@ -219,7 +219,7 @@ export default function SpotlightCard({ brand, rank, mode }: SpotlightCardProps)
             </span>
           </div>
           <div
-            className="text-[10px] font-semibold uppercase tracking-wider"
+            className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: accentColor, opacity: 0.5 }}
           >
             {isCelebrate ? "Keep it up" : "Action needed"}

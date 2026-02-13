@@ -62,14 +62,14 @@ export default function ContentCard({
 
         {/* Platform badge — top left */}
         <div
-          className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm"
+          className="absolute top-3 left-3 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm"
           style={{
             backgroundColor: "rgba(0,0,0,0.6)",
             color: platformConfig.color,
           }}
         >
-          <span className="flex items-center gap-1">
-            <span className="scale-75 inline-block">
+          <span className="flex items-center gap-1.5">
+            <span className="scale-90 inline-block">
               {platformConfig.icon}
             </span>
             {platformConfig.abbr}
@@ -78,7 +78,7 @@ export default function ContentCard({
 
         {/* Score badge — top right */}
         <div
-          className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold backdrop-blur-sm"
+          className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
           style={{
             backgroundColor: "rgba(0,0,0,0.6)",
             color: accentColor,
@@ -89,60 +89,60 @@ export default function ContentCard({
 
         {/* Post type badge */}
         {post.type && post.type !== "post" && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-semibold bg-black/60 text-white/60 backdrop-blur-sm">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-semibold bg-black/60 text-white/60 backdrop-blur-sm">
             {post.type}
           </div>
         )}
 
         {/* Brand + metrics overlay at bottom */}
-        <div className="absolute inset-x-0 bottom-0 p-2.5">
+        <div className="absolute inset-x-0 bottom-0 p-3">
           {/* Brand row */}
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-5 h-5 rounded-full overflow-hidden bg-white/10 shrink-0 ring-1 ring-white/10">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-7 h-7 rounded-full overflow-hidden bg-white/10 shrink-0 ring-1 ring-white/10">
               {post.brandPicture &&
               post.brandPicture !== "/default-avatar.svg" ? (
                 <Image
                   src={post.brandPicture}
                   alt={post.brandName}
-                  width={20}
-                  height={20}
+                  width={28}
+                  height={28}
                   className="w-full h-full object-cover"
                   unoptimized
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[8px] text-white/40 font-semibold">
+                <div className="w-full h-full flex items-center justify-center text-[9px] text-white/40 font-semibold">
                   {post.brandName.charAt(0)}
                 </div>
               )}
             </div>
-            <span className="text-[11px] font-medium text-white/90 truncate drop-shadow-lg">
+            <span className="text-sm font-medium text-white/90 truncate drop-shadow-lg">
               {post.brandName}
             </span>
           </div>
 
           {/* Metrics row */}
-          <div className="flex items-center gap-3 text-[10px] text-white/70">
+          <div className="flex items-center gap-4 text-[11px] text-white/70">
             {post.likes > 0 && (
               <span className="flex items-center gap-1">
-                <span className="text-[9px]">❤️</span>
+                <span className="text-[10px]">❤️</span>
                 {formatNumber(post.likes)}
               </span>
             )}
             {post.comments > 0 && (
               <span className="flex items-center gap-1">
-                <span className="text-[9px]">💬</span>
+                <span className="text-[10px]">💬</span>
                 {formatNumber(post.comments)}
               </span>
             )}
             {post.shares > 0 && (
               <span className="flex items-center gap-1">
-                <span className="text-[9px]">🔄</span>
+                <span className="text-[10px]">🔄</span>
                 {formatNumber(post.shares)}
               </span>
             )}
             {post.reach > 0 && (
               <span className="flex items-center gap-1 ml-auto">
-                <span className="text-[9px]">👁</span>
+                <span className="text-[10px]">👁</span>
                 {formatNumber(post.reach)}
               </span>
             )}

@@ -47,10 +47,10 @@ export default function ContentGrid({
       <div className="relative z-10 p-6 md:p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{isBest ? "🔥" : "📉"}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{isBest ? "🔥" : "📉"}</span>
             <span
-              className="text-[10px] font-bold uppercase tracking-[0.2em]"
+              className="text-sm font-bold uppercase tracking-[0.2em]"
               style={{ color: accentColor, opacity: 0.7 }}
             >
               {isBest ? "Top Performing Content" : "Lowest Performing Content"}
@@ -59,7 +59,7 @@ export default function ContentGrid({
 
           <div className="flex items-center gap-3">
             {totalPostCount > 0 && (
-              <span className="text-[10px] text-white/20">
+              <span className="text-xs text-white/20">
                 from {totalPostCount} posts
               </span>
             )}
@@ -67,7 +67,7 @@ export default function ContentGrid({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-              className="px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
+              className="px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider"
               style={{
                 backgroundColor: accentColorMuted,
                 color: accentColor,
@@ -95,7 +95,7 @@ export default function ContentGrid({
             </span>
           </div>
         ) : posts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {posts.map((post, i) => (
               <ContentCard
                 key={post.id}
@@ -126,9 +126,9 @@ export default function ContentGrid({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
-          className="flex items-center justify-between mt-5 pt-4 border-t border-white/[0.04]"
+          className="flex items-center justify-between mt-6 pt-4 border-t border-white/[0.04]"
         >
-          <div className="flex items-center gap-4 text-[11px] text-white/25">
+          <div className="flex items-center gap-4 text-xs text-white/25">
             <span>
               {posts.length} piece{posts.length !== 1 ? "s" : ""} of content
             </span>
@@ -136,7 +136,7 @@ export default function ContentGrid({
             <span>Combined score: engagement (60%) + reach (40%)</span>
           </div>
           <div
-            className="text-[10px] font-semibold uppercase tracking-wider"
+            className="text-[11px] font-semibold uppercase tracking-wider"
             style={{ color: accentColor, opacity: 0.5 }}
           >
             {isBest ? "Keep creating" : "Review strategy"}

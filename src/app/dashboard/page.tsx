@@ -574,12 +574,12 @@ export default function DashboardPage() {
                 onFocusChange={setSearchFocused}
               />
 
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wider">
+                  <h2 className="text-sm font-semibold text-white/40 uppercase tracking-wider">
                     {hasActiveFilters ? "Filtered Clients" : "All Clients"}
                   </h2>
-                  <p className="text-[10px] text-white/15 mt-0.5">
+                  <p className="text-xs text-white/15 mt-0.5">
                     {displayBrands.length} brands &middot; Page{" "}
                     {phase.page + 1} of {totalGridPages}
                   </p>
@@ -602,7 +602,7 @@ export default function DashboardPage() {
               </div>
 
               {visibleBrands.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {visibleBrands.map((brand, i) => (
                     <ClientCard
                       key={brand.id}

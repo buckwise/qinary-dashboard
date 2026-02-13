@@ -33,14 +33,14 @@ export default function StatBlock({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-3"
+      className="rounded-xl bg-white/[0.02] border border-white/[0.04] p-4"
     >
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <p className="text-[9px] uppercase tracking-[0.15em] text-white/30 font-medium">
+      <div className="flex items-center gap-1.5 mb-2">
+        <p className="text-[10px] uppercase tracking-[0.15em] text-white/30 font-medium">
           {label}
         </p>
         {isEstimated && (
-          <span className="text-[8px] uppercase tracking-wider text-white/20 bg-white/[0.04] px-1 py-0.5 rounded">
+          <span className="text-[9px] uppercase tracking-wider text-white/20 bg-white/[0.04] px-1.5 py-0.5 rounded">
             Est.
           </span>
         )}
@@ -48,7 +48,7 @@ export default function StatBlock({
       {rawNumber ? (
         <AnimatedNumber
           value={value}
-          className="text-xl font-bold text-white/90"
+          className="text-2xl font-bold text-white/90"
           formatFn={formatFn || defaultFmt}
           duration={2}
         />
@@ -57,7 +57,7 @@ export default function StatBlock({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: delay + 0.3 }}
-          className="text-xl font-bold text-white/90"
+          className="text-2xl font-bold text-white/90"
         >
           {formatFn ? formatFn(value) : value}
         </motion.span>

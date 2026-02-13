@@ -42,7 +42,7 @@ export default function ClientCard({ brand, index, onClick }: ClientCardProps) {
       }}
       whileHover={{ scale: 1.01, y: -2 }}
       onClick={onClick}
-      className={`relative rounded-xl border ${border} bg-[#0a0a0a] p-4
+      className={`relative rounded-xl border ${border} bg-[#0a0a0a] p-5
                   hover:bg-[#0f0f0f] transition-all duration-300 ${glow}
                   overflow-hidden group cursor-pointer`}
     >
@@ -51,46 +51,46 @@ export default function ClientCard({ brand, index, onClick }: ClientCardProps) {
 
       <div className="relative z-10">
         {/* Top row: avatar, name, status */}
-        <div className="flex items-start gap-3 mb-3">
+        <div className="flex items-start gap-4 mb-4">
           {/* Profile pic */}
           <div className="relative shrink-0">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-white/5 ring-1 ring-white/[0.06]">
+            <div className="w-14 h-14 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/[0.06]">
               {brand.picture && brand.picture !== "/default-avatar.svg" ? (
                 <Image
                   src={brand.picture}
                   alt={brand.name}
-                  width={40}
-                  height={40}
+                  width={56}
+                  height={56}
                   className="w-full h-full object-cover"
                   unoptimized
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-white/20 text-sm font-semibold">
+                <div className="w-full h-full flex items-center justify-center text-white/20 text-lg font-semibold">
                   {brand.name.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
             {/* Online indicator */}
             {brand.platforms.length > 0 && (
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#0a0a0a] flex items-center justify-center">
-                <div className="live-dot" style={{ width: 5, height: 5 }} />
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-[#0a0a0a] flex items-center justify-center">
+                <div className="live-dot" style={{ width: 6, height: 6 }} />
               </div>
             )}
           </div>
 
           {/* Name + platforms */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-white/90 truncate leading-tight">
+            <h3 className="text-base font-semibold text-white/90 truncate leading-tight">
               {brand.name}
             </h3>
-            <div className="mt-1.5">
+            <div className="mt-2">
               <PlatformIcons connected={brand.platforms} showAll />
             </div>
           </div>
 
           {/* Status badge */}
           <div
-            className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wider ${
+            className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
               statusClass === "growing"
                 ? "bg-emerald-500/10 text-emerald-400"
                 : statusClass === "stable"
@@ -103,20 +103,20 @@ export default function ClientCard({ brand, index, onClick }: ClientCardProps) {
         </div>
 
         {/* Metrics row */}
-        <div className="flex items-end justify-between gap-2">
-          <div className="flex flex-col gap-1">
+        <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-col gap-1.5">
             {/* Follower estimate */}
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-lg font-bold text-white/90 tabular-nums">
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-white/90 tabular-nums">
                 {estFollowers.toLocaleString()}
               </span>
-              <span className="text-[9px] uppercase tracking-wider text-white/25">
+              <span className="text-[10px] uppercase tracking-wider text-white/25">
                 est. reach
               </span>
             </div>
 
             {/* Platforms count + days */}
-            <div className="flex items-center gap-3 text-[10px] text-white/30">
+            <div className="flex items-center gap-3 text-[11px] text-white/30">
               <span>
                 {brand.platforms.length} platform
                 {brand.platforms.length !== 1 ? "s" : ""}
@@ -131,8 +131,8 @@ export default function ClientCard({ brand, index, onClick }: ClientCardProps) {
             <Sparkline
               data={sparkData}
               color={sparkColor}
-              width={72}
-              height={28}
+              width={90}
+              height={34}
             />
           </div>
         </div>
