@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import AnimatedNumber from "./AnimatedNumber";
 
 interface StatsBarProps {
-  totalClients: number;
+  assetsPublished: number;
   totalPlatforms: number;
   activeThisWeek: number;
 }
@@ -44,7 +44,7 @@ function StatCard({ label, value, suffix, delay, formatFn }: StatCardProps) {
 }
 
 export default function StatsBar({
-  totalClients,
+  assetsPublished,
   totalPlatforms,
   activeThisWeek,
 }: StatsBarProps) {
@@ -58,10 +58,10 @@ export default function StatsBar({
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-white/[0.04]">
           <StatCard
-            label="Active Clients"
-            value={totalClients}
+            label="Assets Published"
+            value={assetsPublished}
             delay={0.1}
-            formatFn={(n) => n.toString()}
+            formatFn={(n) => n.toLocaleString()}
           />
           <StatCard
             label="Platforms Managed"

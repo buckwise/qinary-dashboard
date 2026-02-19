@@ -465,7 +465,7 @@ export default function DashboardPage() {
 
       {/* ─── Stats bar ─── */}
       <StatsBar
-        totalClients={brands.length}
+        assetsPublished={contentData.postCount}
         totalPlatforms={stats.totalPlatforms}
         activeThisWeek={stats.activeThisWeek}
       />
