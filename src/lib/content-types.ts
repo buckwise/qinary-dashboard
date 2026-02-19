@@ -27,7 +27,10 @@ export interface ContentPerformanceData {
   worst: ContentPost[];
   brandPosts: Record<string, ContentPost[]>;
   fetchedAt: string;
-  postCount: number;
+  postCount: number;       // total posts published this calendar month
+  activeThisMonth: number; // brands that published at least 1 post this month
+  totalReach: number;      // sum of reach across all posts this month
+  monthLabel: string;      // e.g. "February 2026"
 }
 
 /**

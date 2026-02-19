@@ -116,6 +116,32 @@ export function processBrand(brand: Brand): ProcessedBrand {
   if (brand.pinterest || brand.pinterestBusiness)
     handles.pinterest = brand.pinterestBusiness || brand.pinterest || "";
 
+  // Function to upgrade Instagram CDN URLs to higher resolution
+  const upgradeInstagramUrl = (url: string | null): string | null => {
+    if (!url || !url.includes('cdninstagram.com')) return url;
+
+    // Replace small size parameters with larger ones for better quality
+    // s206x206 -> s640x640 (or remove size restriction entirely)
+    return url
+      .replace(/s\d+x\d+/g, 's640x640') // Upgrade to 640x640
+      .replace(/dst-jpg_s\d+x\d+/g, 'dst-jpg_s640x640');
+  };
+
+  // Prioritize high-quality platform-specific profile pictures
+  // Instagram and Facebook typically have the best quality images
+  const picture =
+    upgradeInstagramUrl(brand.instagramPicture) ||
+    upgradeInstagramUrl(brand.threadsPicture) ||
+    brand.facebookPicture ||
+    brand.youtubeChannelPicture ||
+    brand.linkedInCompanyPicture ||
+    brand.twitterPicture ||
+    brand.tiktokPicture ||
+    brand.blueskyPicture ||
+    brand.pinterestPicture ||
+    upgradeInstagramUrl(brand.picture) ||
+    "/default-avatar.svg";
+
   const joinDate = new Date(brand.joinDate);
   const now = new Date();
   const daysSinceJoin = Math.floor(
@@ -125,7 +151,7 @@ export function processBrand(brand: Brand): ProcessedBrand {
   return {
     id: brand.id,
     name: brand.label,
-    picture: brand.picture || "/default-avatar.svg",
+    picture,
     platforms,
     handles,
     joinDate,
@@ -212,15 +238,23 @@ function formatV2Date(date: Date): string {
   return date.toISOString().replace(/\.\d{3}Z$/, "");
 }
 
+/** Returns the first moment of the current calendar month */
+export function getMonthStart(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
 export async function fetchPlatformPosts(
   blogId: number,
-  platform: Platform
+  platform: Platform,
+  from?: Date,
+  to?: Date
 ): Promise<Record<string, unknown>[]> {
   const paths = V2_POST_PATHS[platform];
   if (!paths) return [];
 
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const end   = to   ?? new Date();
+  const start = from ?? getMonthStart();
 
   const allPosts: Record<string, unknown>[] = [];
 
@@ -229,8 +263,8 @@ export async function fetchPlatformPosts(
       const data = await metricoolFetch<{ data?: unknown[] }>(path, {
         blogId: blogId.toString(),
         userId: USER_ID,
-        from: formatV2Date(thirtyDaysAgo),
-        to: formatV2Date(now),
+        from: formatV2Date(start),
+        to: formatV2Date(end),
       });
 
       const posts = Array.isArray(data?.data) ? data.data : [];

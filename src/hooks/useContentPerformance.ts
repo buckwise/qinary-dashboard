@@ -9,6 +9,9 @@ const EMPTY: ContentPerformanceData = {
   brandPosts: {},
   fetchedAt: "",
   postCount: 0,
+  activeThisMonth: 0,
+  totalReach: 0,
+  monthLabel: "",
 };
 
 let cached: ContentPerformanceData | null = null;

@@ -3,6 +3,7 @@ import {
   fetchBrands,
   processBrand,
   fetchPlatformPosts,
+  getMonthStart,
 } from "@/lib/metricool";
 import type { Platform } from "@/lib/metricool";
 import {
@@ -165,7 +166,12 @@ function scorePosts(posts: ContentPost[]): ContentPost[] {
 }
 
 export async function GET() {
+  const monthStart = getMonthStart();
+  const now        = new Date();
+  const monthLabel = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+
   try {
+
     const rawBrands = await fetchBrands();
     const brands = rawBrands
       .filter((b) => !b.deleted && !b.isDemo)
@@ -202,7 +208,9 @@ export async function GET() {
         batch.map(async (task) => {
           const rawPosts = await fetchPlatformPosts(
             task.brandId,
-            task.platform
+            task.platform,
+            monthStart,
+            now
           );
           return rawPosts.map((raw) =>
             normalizePost(
@@ -245,12 +253,18 @@ export async function GET() {
       `[content-perf] ${allPosts.length} total, ${postsWithData.length} with data → ${best.length} best / ${worst.length} worst, ${Object.keys(brandPosts).length} brands`
     );
 
+    const totalReach      = postsWithData.reduce((sum, p) => sum + p.reach, 0);
+    const activeThisMonth = Object.keys(brandPosts).length;
+
     return NextResponse.json({
       best,
       worst,
       brandPosts,
       fetchedAt: new Date().toISOString(),
       postCount: postsWithData.length,
+      activeThisMonth,
+      totalReach,
+      monthLabel,
     });
   } catch (error) {
     console.error("[content-perf] Error:", error);
@@ -260,6 +274,9 @@ export async function GET() {
       brandPosts: {},
       fetchedAt: new Date().toISOString(),
       postCount: 0,
+      activeThisMonth: 0,
+      totalReach: 0,
+      monthLabel,
     });
   }
 }

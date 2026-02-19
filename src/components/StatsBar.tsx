@@ -6,7 +6,9 @@ import AnimatedNumber from "./AnimatedNumber";
 interface StatsBarProps {
   assetsPublished: number;
   totalPlatforms: number;
-  activeThisWeek: number;
+  activeThisMonth: number;
+  totalReach: number;
+  monthLabel: string;
 }
 
 interface StatCardProps {
@@ -46,7 +48,9 @@ function StatCard({ label, value, suffix, delay, formatFn }: StatCardProps) {
 export default function StatsBar({
   assetsPublished,
   totalPlatforms,
-  activeThisWeek,
+  activeThisMonth,
+  totalReach,
+  monthLabel,
 }: StatsBarProps) {
   return (
     <motion.div
@@ -58,7 +62,7 @@ export default function StatsBar({
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-0 divide-x divide-white/[0.04]">
           <StatCard
-            label="Assets Published"
+            label={`Assets Published${monthLabel ? ` · ${monthLabel}` : ""}`}
             value={assetsPublished}
             delay={0.1}
             formatFn={(n) => n.toLocaleString()}
@@ -70,16 +74,21 @@ export default function StatsBar({
             formatFn={(n) => n.toString()}
           />
           <StatCard
-            label="Active This Week"
-            value={activeThisWeek}
+            label="Active This Month"
+            value={activeThisMonth}
             delay={0.3}
             formatFn={(n) => n.toString()}
           />
           <StatCard
             label="Total Reach"
-            value={totalPlatforms * 2800}
+            value={totalReach}
             delay={0.4}
-            suffix="est."
+            formatFn={(n) => n >= 1000000
+              ? `${(n / 1000000).toFixed(1)}M`
+              : n >= 1000
+              ? `${(n / 1000).toFixed(0)}K`
+              : n.toLocaleString()
+            }
           />
         </div>
       </div>

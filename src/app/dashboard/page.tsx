@@ -190,16 +190,10 @@ export default function DashboardPage() {
   }, [effectiveAutoScroll, phase, totalGridPages, brands.length, manualTab]);
 
   // Computed stats
-  const stats = useMemo(() => {
-    const totalPlatforms = brands.reduce(
-      (sum, b) => sum + b.platforms.length,
-      0
-    );
-    const activeThisWeek = brands.filter(
-      (b) => b.platforms.length > 0
-    ).length;
-    return { totalPlatforms, activeThisWeek };
-  }, [brands]);
+  const totalPlatforms = useMemo(
+    () => brands.reduce((sum, b) => sum + b.platforms.length, 0),
+    [brands]
+  );
 
   // Visible brands for grid phase
   const visibleBrands =
@@ -466,8 +460,10 @@ export default function DashboardPage() {
       {/* ─── Stats bar ─── */}
       <StatsBar
         assetsPublished={contentData.postCount}
-        totalPlatforms={stats.totalPlatforms}
-        activeThisWeek={stats.activeThisWeek}
+        totalPlatforms={totalPlatforms}
+        activeThisMonth={contentData.activeThisMonth}
+        totalReach={contentData.totalReach}
+        monthLabel={contentData.monthLabel}
       />
 
       {/* ─── Main content ─── */}
